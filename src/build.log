@@ -1,92 +1,101 @@
 hortirata.c: In function 'simulate':
-hortirata.c:79:41: warning: passing argument 1 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
-   79 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
-      |                                         ^~~~~~~~~
-      |                                         |
-      |                                         uint8_t (*)[5][5] {aka unsigned char (*)[5][5]}
+hortirata.c:75:25: warning: initialization of 'uint8_t' {aka 'unsigned char'} from 'uint8_t *' {aka 'unsigned char *'} makes integer from pointer without a cast [-Wint-conversion]
+   75 |             uint8_t v = board[row][col];
+      |                         ^~~~~
+hortirata.c:82:45: warning: passing argument 1 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
+   82 |                 if ((1 < steps) && simulate(&simboard, &simvcount, steps-1, ((uint8_t[2]){row, col}))) return true;
+      |                                             ^~~~~~~~~
+      |                                             |
+      |                                             uint8_t (*)[5][5] {aka unsigned char (*)[5][5]}
 hortirata.c:64:24: note: expected 'uint8_t * (*)[5]' {aka 'unsigned char * (*)[5]'} but argument is of type 'uint8_t (*)[5][5]' {aka 'unsigned char (*)[5][5]'}
-   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps, uint8_t lastpick[2])
       |               ~~~~~~~~~^~~~~~~~~~~
-hortirata.c:79:52: warning: passing argument 2 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
-   79 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
-      |                                                    ^~~~~~~~~~
-      |                                                    |
-      |                                                    uint8_t (*)[5] {aka unsigned char (*)[5]}
+hortirata.c:82:56: warning: passing argument 2 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
+   82 |                 if ((1 < steps) && simulate(&simboard, &simvcount, steps-1, ((uint8_t[2]){row, col}))) return true;
+      |                                                        ^~~~~~~~~~
+      |                                                        |
+      |                                                        uint8_t (*)[5] {aka unsigned char (*)[5]}
 hortirata.c:64:46: note: expected 'uint8_t **' {aka 'unsigned char **'} but argument is of type 'uint8_t (*)[5]' {aka 'unsigned char (*)[5]'}
-   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps, uint8_t lastpick[2])
       |                                     ~~~~~~~~~^~~~~~~~~
 hortirata.c: In function 'main':
-hortirata.c:240:48: warning: passing argument 1 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
-  240 |                         equilibrium = simulate(&board, &vcount, steps);
+hortirata.c:266:48: warning: passing argument 1 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
+  266 |                         equilibrium = simulate(&board, &vcount, steps, lastpick);
       |                                                ^~~~~~
       |                                                |
       |                                                uint8_t (*)[5][5] {aka unsigned char (*)[5][5]}
 hortirata.c:64:24: note: expected 'uint8_t * (*)[5]' {aka 'unsigned char * (*)[5]'} but argument is of type 'uint8_t (*)[5][5]' {aka 'unsigned char (*)[5][5]'}
-   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps, uint8_t lastpick[2])
       |               ~~~~~~~~~^~~~~~~~~~~
-hortirata.c:240:56: warning: passing argument 2 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
-  240 |                         equilibrium = simulate(&board, &vcount, steps);
+hortirata.c:266:56: warning: passing argument 2 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
+  266 |                         equilibrium = simulate(&board, &vcount, steps, lastpick);
       |                                                        ^~~~~~~
       |                                                        |
       |                                                        uint8_t (*)[5] {aka unsigned char (*)[5]}
 hortirata.c:64:46: note: expected 'uint8_t **' {aka 'unsigned char **'} but argument is of type 'uint8_t (*)[5]' {aka 'unsigned char (*)[5]'}
-   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps, uint8_t lastpick[2])
       |                                     ~~~~~~~~~^~~~~~~~~
 hortirata.c: In function 'simulate':
-hortirata.c:79:32: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-   79 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
-      |                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-hortirata.c:79:32: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-hortirata.c:79:32: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-hortirata.c:79:32: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:82:36: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+   82 |                 if ((1 < steps) && simulate(&simboard, &simvcount, steps-1, ((uint8_t[2]){row, col}))) return true;
+      |                                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hortirata.c:82:36: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+hortirata.c:82:36: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+hortirata.c:82:36: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:82:36: note: referencing argument 4 of type 'uint8_t[2]' {aka 'unsigned char[2]'}
 hortirata.c:64:6: note: in a call to function 'simulate'
-   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps, uint8_t lastpick[2])
       |      ^~~~~~~~
 hortirata.c: In function 'main':
-hortirata.c:240:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-  240 |                         equilibrium = simulate(&board, &vcount, steps);
-      |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-hortirata.c:240:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-hortirata.c:240:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-hortirata.c:240:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:266:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+  266 |                         equilibrium = simulate(&board, &vcount, steps, lastpick);
+      |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hortirata.c:266:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+hortirata.c:266:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+hortirata.c:266:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:266:39: note: referencing argument 4 of type 'uint8_t[2]' {aka 'unsigned char[2]'}
 hortirata.c:64:6: note: in a call to function 'simulate'
-   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps, uint8_t lastpick[2])
       |      ^~~~~~~~
 hortirata.c: In function 'simulate':
-hortirata.c:79:32: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-   79 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
-      |                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-hortirata.c:79:32: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-hortirata.c:79:32: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-hortirata.c:79:32: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:82:36: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+   82 |                 if ((1 < steps) && simulate(&simboard, &simvcount, steps-1, ((uint8_t[2]){row, col}))) return true;
+      |                                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hortirata.c:82:36: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+hortirata.c:82:36: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+hortirata.c:82:36: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:82:36: note: referencing argument 4 of type 'uint8_t[2]' {aka 'unsigned char[2]'}
 hortirata.c:64:6: note: in a call to function 'simulate'
-   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps, uint8_t lastpick[2])
       |      ^~~~~~~~
-hortirata.c:79:32: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-   79 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
-      |                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-hortirata.c:79:32: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-hortirata.c:79:32: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-hortirata.c:79:32: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:82:36: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+   82 |                 if ((1 < steps) && simulate(&simboard, &simvcount, steps-1, ((uint8_t[2]){row, col}))) return true;
+      |                                    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hortirata.c:82:36: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+hortirata.c:82:36: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+hortirata.c:82:36: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:82:36: note: referencing argument 4 of type 'uint8_t[2]' {aka 'unsigned char[2]'}
 hortirata.c:64:6: note: in a call to function 'simulate'
-   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps, uint8_t lastpick[2])
       |      ^~~~~~~~
 hortirata.c: In function 'main':
-hortirata.c:240:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-  240 |                         equilibrium = simulate(&board, &vcount, steps);
-      |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-hortirata.c:240:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-hortirata.c:240:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-hortirata.c:240:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:266:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+  266 |                         equilibrium = simulate(&board, &vcount, steps, lastpick);
+      |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hortirata.c:266:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+hortirata.c:266:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+hortirata.c:266:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:266:39: note: referencing argument 4 of type 'uint8_t[2]' {aka 'unsigned char[2]'}
 hortirata.c:64:6: note: in a call to function 'simulate'
-   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps, uint8_t lastpick[2])
       |      ^~~~~~~~
-hortirata.c:240:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-  240 |                         equilibrium = simulate(&board, &vcount, steps);
-      |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-hortirata.c:240:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-hortirata.c:240:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-hortirata.c:240:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:266:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+  266 |                         equilibrium = simulate(&board, &vcount, steps, lastpick);
+      |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+hortirata.c:266:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+hortirata.c:266:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+hortirata.c:266:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+hortirata.c:266:39: note: referencing argument 4 of type 'uint8_t[2]' {aka 'unsigned char[2]'}
 hortirata.c:64:6: note: in a call to function 'simulate'
-   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+   64 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps, uint8_t lastpick[2])
       |      ^~~~~~~~

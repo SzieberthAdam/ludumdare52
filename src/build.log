@@ -1,92 +1,92 @@
 pflatn.c: In function 'simulate':
-pflatn.c:89:41: warning: passing argument 1 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
-   89 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
+pflatn.c:91:41: warning: passing argument 1 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
+   91 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
       |                                         ^~~~~~~~~
       |                                         |
       |                                         uint8_t (*)[5][5] {aka unsigned char (*)[5][5]}
-pflatn.c:74:24: note: expected 'uint8_t * (*)[5]' {aka 'unsigned char * (*)[5]'} but argument is of type 'uint8_t (*)[5][5]' {aka 'unsigned char (*)[5][5]'}
-   74 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+pflatn.c:76:24: note: expected 'uint8_t * (*)[5]' {aka 'unsigned char * (*)[5]'} but argument is of type 'uint8_t (*)[5][5]' {aka 'unsigned char (*)[5][5]'}
+   76 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
       |               ~~~~~~~~~^~~~~~~~~~~
-pflatn.c:89:52: warning: passing argument 2 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
-   89 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
+pflatn.c:91:52: warning: passing argument 2 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
+   91 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
       |                                                    ^~~~~~~~~~
       |                                                    |
       |                                                    uint8_t (*)[5] {aka unsigned char (*)[5]}
-pflatn.c:74:46: note: expected 'uint8_t **' {aka 'unsigned char **'} but argument is of type 'uint8_t (*)[5]' {aka 'unsigned char (*)[5]'}
-   74 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+pflatn.c:76:46: note: expected 'uint8_t **' {aka 'unsigned char **'} but argument is of type 'uint8_t (*)[5]' {aka 'unsigned char (*)[5]'}
+   76 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
       |                                     ~~~~~~~~~^~~~~~~~~
 pflatn.c: In function 'main':
-pflatn.c:259:48: warning: passing argument 1 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
-  259 |                         equilibrium = simulate(&board, &vcount, steps);
+pflatn.c:260:48: warning: passing argument 1 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
+  260 |                         equilibrium = simulate(&board, &vcount, steps);
       |                                                ^~~~~~
       |                                                |
       |                                                uint8_t (*)[5][5] {aka unsigned char (*)[5][5]}
-pflatn.c:74:24: note: expected 'uint8_t * (*)[5]' {aka 'unsigned char * (*)[5]'} but argument is of type 'uint8_t (*)[5][5]' {aka 'unsigned char (*)[5][5]'}
-   74 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+pflatn.c:76:24: note: expected 'uint8_t * (*)[5]' {aka 'unsigned char * (*)[5]'} but argument is of type 'uint8_t (*)[5][5]' {aka 'unsigned char (*)[5][5]'}
+   76 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
       |               ~~~~~~~~~^~~~~~~~~~~
-pflatn.c:259:56: warning: passing argument 2 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
-  259 |                         equilibrium = simulate(&board, &vcount, steps);
+pflatn.c:260:56: warning: passing argument 2 of 'simulate' from incompatible pointer type [-Wincompatible-pointer-types]
+  260 |                         equilibrium = simulate(&board, &vcount, steps);
       |                                                        ^~~~~~~
       |                                                        |
       |                                                        uint8_t (*)[5] {aka unsigned char (*)[5]}
-pflatn.c:74:46: note: expected 'uint8_t **' {aka 'unsigned char **'} but argument is of type 'uint8_t (*)[5]' {aka 'unsigned char (*)[5]'}
-   74 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+pflatn.c:76:46: note: expected 'uint8_t **' {aka 'unsigned char **'} but argument is of type 'uint8_t (*)[5]' {aka 'unsigned char (*)[5]'}
+   76 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
       |                                     ~~~~~~~~~^~~~~~~~~
 pflatn.c: In function 'simulate':
-pflatn.c:89:32: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-   89 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
+pflatn.c:91:32: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+   91 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
       |                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-pflatn.c:89:32: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-pflatn.c:89:32: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-pflatn.c:89:32: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
-pflatn.c:74:6: note: in a call to function 'simulate'
-   74 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+pflatn.c:91:32: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+pflatn.c:91:32: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+pflatn.c:91:32: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+pflatn.c:76:6: note: in a call to function 'simulate'
+   76 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
       |      ^~~~~~~~
 pflatn.c: In function 'main':
-pflatn.c:259:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-  259 |                         equilibrium = simulate(&board, &vcount, steps);
+pflatn.c:260:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+  260 |                         equilibrium = simulate(&board, &vcount, steps);
       |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-pflatn.c:259:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-pflatn.c:259:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-pflatn.c:259:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
-pflatn.c:74:6: note: in a call to function 'simulate'
-   74 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+pflatn.c:260:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+pflatn.c:260:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+pflatn.c:260:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+pflatn.c:76:6: note: in a call to function 'simulate'
+   76 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
       |      ^~~~~~~~
 pflatn.c: In function 'simulate':
-pflatn.c:89:32: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-   89 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
+pflatn.c:91:32: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+   91 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
       |                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-pflatn.c:89:32: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-pflatn.c:89:32: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-pflatn.c:89:32: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
-pflatn.c:74:6: note: in a call to function 'simulate'
-   74 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+pflatn.c:91:32: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+pflatn.c:91:32: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+pflatn.c:91:32: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+pflatn.c:76:6: note: in a call to function 'simulate'
+   76 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
       |      ^~~~~~~~
-pflatn.c:89:32: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-   89 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
+pflatn.c:91:32: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+   91 |             if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
       |                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-pflatn.c:89:32: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-pflatn.c:89:32: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-pflatn.c:89:32: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
-pflatn.c:74:6: note: in a call to function 'simulate'
-   74 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+pflatn.c:91:32: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+pflatn.c:91:32: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+pflatn.c:91:32: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+pflatn.c:76:6: note: in a call to function 'simulate'
+   76 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
       |      ^~~~~~~~
 pflatn.c: In function 'main':
-pflatn.c:259:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-  259 |                         equilibrium = simulate(&board, &vcount, steps);
+pflatn.c:260:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+  260 |                         equilibrium = simulate(&board, &vcount, steps);
       |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-pflatn.c:259:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-pflatn.c:259:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-pflatn.c:259:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
-pflatn.c:74:6: note: in a call to function 'simulate'
-   74 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+pflatn.c:260:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+pflatn.c:260:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+pflatn.c:260:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+pflatn.c:76:6: note: in a call to function 'simulate'
+   76 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
       |      ^~~~~~~~
-pflatn.c:259:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
-  259 |                         equilibrium = simulate(&board, &vcount, steps);
+pflatn.c:260:39: warning: 'simulate' accessing 100 bytes in a region of size 25 [-Wstringop-overflow=]
+  260 |                         equilibrium = simulate(&board, &vcount, steps);
       |                                       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-pflatn.c:259:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
-pflatn.c:259:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
-pflatn.c:259:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
-pflatn.c:74:6: note: in a call to function 'simulate'
-   74 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+pflatn.c:260:39: note: referencing argument 1 of type 'uint8_t *[5][5]' {aka 'unsigned char *[5][5]'}
+pflatn.c:260:39: warning: 'simulate' accessing 20 bytes in a region of size 5 [-Wstringop-overflow=]
+pflatn.c:260:39: note: referencing argument 2 of type 'uint8_t *[5]' {aka 'unsigned char *[5]'}
+pflatn.c:76:6: note: in a call to function 'simulate'
+   76 | bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
       |      ^~~~~~~~

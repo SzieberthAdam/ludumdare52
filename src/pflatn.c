@@ -22,6 +22,8 @@
 
 #include "raylib.h"
 
+#include "tiles.h"
+
 #define TARGET_FPS     30
 
 #ifndef max
@@ -114,9 +116,25 @@ int main(void)
     int currentGesture = GESTURE_NONE;
     int lastGesture = GESTURE_NONE;
 
+    //Image tiles_image = LoadImage("tiles.png");
+    Image tiles_image = {
+        .data = TILES_DATA,
+        .width = TILES_WIDTH,
+        .height = TILES_HEIGHT,
+        .format = TILES_FORMAT,
+        .mipmaps = 1
+    };
+
     SetConfigFlags(FLAG_VSYNC_HINT);
     InitWindow(windowedScreenWidth, windowedScreenHeight, "pFLATn");
     Vector2 windowPos = GetWindowPosition();
+
+    Texture2D tiles = LoadTextureFromImage(tiles_image); // STRICTLY AFTER InitWindow();!
+
+    //UnloadImage(tiles_image);
+
+
+
 
     SetTargetFPS(TARGET_FPS);
 
@@ -206,16 +224,8 @@ int main(void)
                     {
                         uint8_t v = board[row][col];
                         if (v==128) continue;
-                        sprintf(str, "%d", v);
-                        Rectangle r = {1 + 64 * col, 1 + 64 * row, 62, 62};
-                        DrawRectangleRec(r, ((Color){
-                                ((N < vcount[v]) ? (255 / (N-1)) * (N-1-min(N-1, vcount[v]-N-1)) : 0x00),
-                                ((vcount[v] == N) ? 0xFF : 0x00),
-                                ((vcount[v] < N) ? (255 / (N-1)) * vcount[v] : 0x00),
-                                0xFF
-                            }
-                        ));
-                        DrawText(str, 22 + 64 * col, 14 + 64 * row, 40, COLOR_FOREGROUND);
+                        uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
+                        DrawTexturePro(tiles, ((Rectangle){i * 64, v * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
                     }
                 }
                 DrawText("MOVE YOUR MOUSE", 10, 7 + 64 * N, 20, COLOR_FOREGROUND);
@@ -228,18 +238,9 @@ int main(void)
                     for (uint8_t col=0; col<N; col++)
                     {
                         uint8_t v = board[row][col];
-                        if (v==128) continue;
-                        sprintf(str, "%d", v);
-                        Rectangle r = {1 + 64 * col, 1 + 64 * row, 62, 62};
-                        DrawRectangleRec(r, ((Color){
-                                ((N < vcount[v]) ? (255 / (N-1)) * (N-1-min(N-1, vcount[v]-N-1)) : 0x00),
-                                ((vcount[v] == N) ? 0xFF : 0x00),
-                                ((vcount[v] < N) ? (255 / (N-1)) * vcount[v] : 0x00),
-                                0xFF
-                            }
-                        ));
-                        DrawText(str, 22 + 64 * col, 14 + 64 * row, 40, COLOR_FOREGROUND);
-                        if (CheckCollisionPointRec(mouse, r))
+                        uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
+                        DrawTexturePro(tiles, ((Rectangle){i * 64, v * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                        if (CheckCollisionPointRec(mouse, ((Rectangle){1 + 64 * col, 1 + 64 * row, 62, 62})))
                         {
                             if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
                             {
@@ -279,24 +280,8 @@ int main(void)
                     for (uint8_t col=0; col<N; col++)
                     {
                         uint8_t v = board[row][col];
-                        if (v==128) continue;
-                        sprintf(str, "%d", v);
-                        Rectangle r = {1 + 64 * col, 1 + 64 * row, 62, 62};
-                        DrawRectangleRec(r, ((Color){
-                                ((N < vcount[v]) ? (255 / (N-1)) * (N-1-min(N-1, vcount[v]-N-1)) : 0x00),
-                                ((vcount[v] == N) ? 0xFF : 0x00),
-                                ((vcount[v] < N) ? (255 / (N-1)) * vcount[v] : 0x00),
-                                0xFF
-                            }
-                        ));
-                        DrawText(str, 22 + 64 * col, 14 + 64 * row, 40, COLOR_FOREGROUND);
-                        if (CheckCollisionPointRec(mouse, r))
-                        {
-                            if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
-                            {
-                                transform(board, vcount, row, col);
-                            }
-                        }
+                        uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
+                        DrawTexturePro(tiles, ((Rectangle){i * 64, v * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
                     }
                 }
                 DrawText("CONGRATULATIONS!", 10, 7 + 64 * N, 20, COLOR_FOREGROUND);
@@ -317,6 +302,7 @@ int main(void)
     // De-Initialization
     //--------------------------------------------------------------------------------------
     CloseWindow();        // Close window and OpenGL context
+    UnloadTexture(tiles);
     //--------------------------------------------------------------------------------------
 
     return 0;

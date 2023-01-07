@@ -41,7 +41,7 @@
 #define SCENE_GAME 2
 #define SCENE_WIN 3
 
-#define MAXSIMSTEPS 3
+#define MAXSIMSTEPS N
 
 
 void transform(uint8_t board[N][N], uint8_t vcount[N], uint8_t row, uint8_t col)

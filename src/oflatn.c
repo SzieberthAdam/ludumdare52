@@ -8,9 +8,8 @@
 // Preamble Show/Hide: Ctrl+K Ctrl+9 and Ctrl+K Ctrl+8
 // Fold All Regions: Ctrl+k Ctrl+8
 
-#pragma region preamb
-
 #include <stdint.h>
+#include <stdio.h>
 
 // TSC clock
 // https://stackoverflow.com/questions/13772567/how-to-get-the-cpu-cycle-count-in-x86-64-from-c
@@ -22,7 +21,7 @@
 
 #include "raylib.h"
 
-#define TARGET_FPS     60
+#define TARGET_FPS     1440
 
 #ifndef max
 #define max(a,b) (((a) > (b)) ? (a) : (b))
@@ -34,33 +33,10 @@
 #define COLOR_BACKGROUND BLACK
 #define COLOR_FOREGROUND WHITE
 
-#pragma endregion preamb
+#define SCENE_NEWGAME 0
+#define SCENE_DRAWBOARD 1
+#define SCENE_GAME 2
 
-void prep_board(uint8_t board[8][8])
-{
-    for (uint8_t row=0; row<8; row++)
-    {
-        for (uint8_t col=0; col<8; col++)
-        {
-            board[row][col] = 128;
-        }
-    }
-}
-
-void draw_board(uint8_t board[8][8])
-{
-    char s[16];
-    for (uint8_t row=0; row<8; row++)
-    {
-        for (uint8_t col=0; col<8; col++)
-        {
-            uint8_t v = board[row][col];
-            if (v==128) continue;
-            sprintf(s, "%d", v);
-            DrawText(s, 12 + 64 * col, 12 + 64 * row, 40, COLOR_FOREGROUND);
-        }
-    }
-}
 
 int main(void)
     {
@@ -76,11 +52,11 @@ int main(void)
     uint16_t screenWidth = windowedScreenWidth;
     uint16_t screenHeight = windowedScreenHeight;
 
-    Font font1, font2, font3;
+    uint8_t scene = SCENE_NEWGAME;
 
-    uint8_t scene = 0;
     uint8_t board[8][8];
-    prep_board(board);
+    uint8_t vcount[8];
+
     uint16_t uintvar[16] = {0};
 
     Vector2 mouse;
@@ -88,7 +64,6 @@ int main(void)
     int currentGesture = GESTURE_NONE;
     int lastGesture = GESTURE_NONE;
 
-    SetConfigFlags(FLAG_VSYNC_HINT | FLAG_WINDOW_RESIZABLE);
     InitWindow(windowedScreenWidth, windowedScreenHeight, "oFLATn");
     Vector2 windowPos = GetWindowPosition();
 
@@ -142,33 +117,107 @@ int main(void)
         ClearBackground(RAYWHITE);
         DrawRectangle(0, 0, screenWidth, screenHeight, COLOR_BACKGROUND);
 
-        DrawFPS(windowedScreenWidth-100, 10); // for debug
+        //DrawFPS(windowedScreenWidth-100, 10); // for debug
 
         switch (scene)
         {
-            case 0:  // draw
+
+            case SCENE_NEWGAME:
+            {
+                for (uint8_t row=0; row<8; row++)
+                {
+                    for (uint8_t col=0; col<8; col++)
+                    {
+                        board[row][col] = 128;
+                    }
+                }
+                scene = SCENE_DRAWBOARD;
+            }
+
+            case SCENE_DRAWBOARD:  // draw
             {
                 if (currentGesture == GESTURE_DRAG) mousedelta = GetGestureDragVector();
                 else mousedelta = GetMouseDelta();
-                if (mousedelta.x != (float)(0) || mousedelta.y != (float)(0))
+                bool running_mouse = mousedelta.x != (float)(0) || mousedelta.y != (float)(0);
+                if (running_mouse)
                 {
                     uint8_t randval = __rdtsc() & 0x07;
                     board[uintvar[0] / 8][uintvar[0] % 8] = randval;
                     if (uintvar[0] == 8*8)
                     {
                         uintvar[0] = 0;
-                        uintvar[1] = 0;
-                        uintvar[2] = 0;
-                        scene = 1;
+                        for (uint8_t v=0; v<8; v++) vcount[v] = 0;
+                        for (uint8_t row=0; row<8; row++)
+                        {
+                            for (uint8_t col=0; col<8; col++)
+                            {
+                                uint8_t v = board[row][col];
+                                if (v==128) continue;
+                                vcount[v]++;
+                            }
+                        }
+                        scene = SCENE_GAME;
                     }
                     else uintvar[0]++;
                 }
-                draw_board(board);
+                if (running_mouse)
+                {
+                    for (uint8_t row=0; row<8; row++)
+                    {
+                        for (uint8_t col=0; col<8; col++)
+                        {
+                            uint8_t v = board[row][col];
+                            if (v==128) continue;
+                            sprintf(str, "%d", v);
+                            DrawText(str, 22 + 64 * col, 14 + 64 * row, 40, COLOR_FOREGROUND);
+                        }
+                    }
+                }
+                if (!running_mouse)
+                {
+                    DrawText("MOVE\nYOUR\nMOUSE\nFOR\nBOARD\nGENERATION", 22, 14, 40, COLOR_FOREGROUND);
+                }
             } break;
 
-            case 1:
+            case SCENE_GAME:
             {
-                draw_board(board);
+                for (uint8_t row=0; row<8; row++)
+                {
+                    for (uint8_t col=0; col<8; col++)
+                    {
+                        uint8_t v = board[row][col];
+                        if (v==128) continue;
+                        sprintf(str, "%d", v);
+                        Rectangle r = {1 + 64 * col, 1 + 64 * row, 62, 62};
+                        //DrawRectangleRec(r, ((Color){((8 < vcount[v]) ? 31 + 4 * vcount[v] : 0x00), ((vcount[v] == 8) ? 0xFF : 0x00), ((vcount[v] < 8) ? 3 + 36 * vcount[v] : 0x00), 0xFF}));
+                        DrawRectangleRec(r, ((Color){
+                                ((8 < vcount[v]) ? 255 - 36 * min(7, vcount[v]-8) - 3 : 0x00),
+                                ((vcount[v] == 8) ? 0xFF : 0x00),
+                                ((vcount[v] < 8) ? 3 + 36 * vcount[v] : 0x00),
+                                0xFF
+                            }
+                        ));
+                        DrawText(str, 22 + 64 * col, 14 + 64 * row, 40, COLOR_FOREGROUND);
+                        if (CheckCollisionPointRec(mouse, r))
+                        {
+                            if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
+                            {
+                                for (uint8_t row1=((0 < row) ? row-1 : 0); row1<=((row < 7) ? row+1 : 7); row1++)
+                                {
+                                    for (uint8_t col1=((0 < col) ? col-1 : 0); col1<=((col < 7) ? col+1 : 7); col1++)
+                                    {
+                                        if ((row1==row) && (col1==col)) continue;
+                                        uint8_t v0 = board[row1][col1];
+                                        uint8_t v1 = (v0 + v) % 8;
+                                        board[row1][col1] = v1;
+                                        vcount[v0]--;
+                                        vcount[v1]++;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             } break;
 
         }

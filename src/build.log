@@ -1,46 +1,10 @@
-oflatn.c:11: warning: ignoring '#pragma region preamb' [-Wunknown-pragmas]
-   11 | #pragma region preamb
-      | 
-oflatn.c:37: warning: ignoring '#pragma endregion preamb' [-Wunknown-pragmas]
-   37 | #pragma endregion preamb
-      | 
-oflatn.c: In function 'draw_board':
-oflatn.c:59:13: warning: implicit declaration of function 'sprintf' [-Wimplicit-function-declaration]
-   59 |             sprintf(s, "%d", v);
-      |             ^~~~~~~
-oflatn.c:24:1: note: include '<stdio.h>' or provide a declaration of 'sprintf'
-   23 | #include "raylib.h"
-  +++ |+#include <stdio.h>
-   24 | 
-oflatn.c:59:13: warning: incompatible implicit declaration of built-in function 'sprintf' [-Wbuiltin-declaration-mismatch]
-   59 |             sprintf(s, "%d", v);
-      |             ^~~~~~~
-oflatn.c:59:13: note: include '<stdio.h>' or provide a declaration of 'sprintf'
 oflatn.c: In function 'main':
-oflatn.c:89:9: warning: variable 'lastGesture' set but not used [-Wunused-but-set-variable]
-   89 |     int lastGesture = GESTURE_NONE;
-      |         ^~~~~~~~~~~
-oflatn.c:86:13: warning: variable 'mouse' set but not used [-Wunused-but-set-variable]
-   86 |     Vector2 mouse;
-      |             ^~~~~
-oflatn.c:79:24: warning: unused variable 'font3' [-Wunused-variable]
-   79 |     Font font1, font2, font3;
-      |                        ^~~~~
-oflatn.c:79:17: warning: unused variable 'font2' [-Wunused-variable]
-   79 |     Font font1, font2, font3;
-      |                 ^~~~~
-oflatn.c:79:10: warning: unused variable 'font1' [-Wunused-variable]
-   79 |     Font font1, font2, font3;
-      |          ^~~~~
-oflatn.c:72:10: warning: unused variable 'str' [-Wunused-variable]
-   72 |     char str[1024];
-      |          ^~~
-oflatn.c:71:13: warning: unused variable 'cursor' [-Wunused-variable]
-   71 |     Vector2 cursor;
+oflatn.c:47:13: warning: unused variable 'cursor' [-Wunused-variable]
+   47 |     Vector2 cursor;
       |             ^~~~~~
-oflatn.c:69:10: warning: unused variable 'debugstr' [-Wunused-variable]
-   69 |     char debugstr[256][256] = {0};
+oflatn.c:45:10: warning: unused variable 'debugstr' [-Wunused-variable]
+   45 |     char debugstr[256][256] = {0};
       |          ^~~~~~~~
-oflatn.c:68:9: warning: unused variable 'debugvar' [-Wunused-variable]
-   68 |     int debugvar = 0;
+oflatn.c:44:9: warning: unused variable 'debugvar' [-Wunused-variable]
+   44 |     int debugvar = 0;
       |         ^~~~~~~~

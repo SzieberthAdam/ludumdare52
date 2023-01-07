@@ -1,10 +1,43 @@
-oflatn.c: In function 'main':
-oflatn.c:47:13: warning: unused variable 'cursor' [-Wunused-variable]
-   47 |     Vector2 cursor;
+pflatn.c: In function 'main':
+pflatn.c:248:25: warning: unused variable 'd' [-Wunused-variable]
+  248 |                 uint8_t d = 1;
+      |                         ^
+pflatn.c:79:13: warning: unused variable 'cursor' [-Wunused-variable]
+   79 |     Vector2 cursor;
       |             ^~~~~~
-oflatn.c:45:10: warning: unused variable 'debugstr' [-Wunused-variable]
-   45 |     char debugstr[256][256] = {0};
+pflatn.c:77:10: warning: unused variable 'debugstr' [-Wunused-variable]
+   77 |     char debugstr[256][256] = {0};
       |          ^~~~~~~~
-oflatn.c:44:9: warning: unused variable 'debugvar' [-Wunused-variable]
-   44 |     int debugvar = 0;
+pflatn.c:76:9: warning: unused variable 'debugvar' [-Wunused-variable]
+   76 |     int debugvar = 0;
       |         ^~~~~~~~
+pflatn.c:163:41: warning: iteration 5 invokes undefined behavior [-Waggressive-loop-optimizations]
+  163 |                         board[row][col] = 128;
+      |                         ~~~~~~~~~~~~~~~~^~~~~
+pflatn.c:159:40: note: within this loop
+  159 |                 for (uint8_t row=0; row<8; row++)
+      |                                     ~~~^~
+pflatn.c:163:41: warning: writing 4 bytes into a region of size 1 [-Wstringop-overflow=]
+  163 |                         board[row][col] = 128;
+      |                         ~~~~~~~~~~~~~~~~^~~~~
+pflatn.c:89:13: note: at offset 24 into destination object 'board' of size 25
+   89 |     uint8_t board[N][N];
+      |             ^~~~~
+pflatn.c:163:41: warning: writing 4 bytes into a region of size 0 [-Wstringop-overflow=]
+  163 |                         board[row][col] = 128;
+      |                         ~~~~~~~~~~~~~~~~^~~~~
+pflatn.c:89:13: note: at offset 28 into destination object 'board' of size 25
+   89 |     uint8_t board[N][N];
+      |             ^~~~~
+pflatn.c:163:41: warning: writing 4 bytes into a region of size 0 [-Wstringop-overflow=]
+  163 |                         board[row][col] = 128;
+      |                         ~~~~~~~~~~~~~~~~^~~~~
+pflatn.c:89:13: note: at offset 32 into destination object 'board' of size 25
+   89 |     uint8_t board[N][N];
+      |             ^~~~~
+pflatn.c:163:41: warning: writing 4 bytes into a region of size 0 [-Wstringop-overflow=]
+  163 |                         board[row][col] = 128;
+      |                         ~~~~~~~~~~~~~~~~^~~~~
+pflatn.c:89:13: note: at offset 36 into destination object 'board' of size 25
+   89 |     uint8_t board[N][N];
+      |             ^~~~~

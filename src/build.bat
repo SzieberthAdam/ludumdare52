@@ -7,4 +7,6 @@ SET CFLAGS=%RAYLIB_PATH%\src\raylib.rc.data -s -static -O2 -std=c99 -Wall -I%RAY
 SET LDFLAGS=-lraylib -lopengl32 -lgdi32 -lwinmm
 if exist ..\bin\oflatn.exe del /F ..\bin\oflatn.exe
 gcc -o ..\bin\oflatn.exe oflatn.c %CFLAGS% %LDFLAGS% 2> build.log
+if exist ..\bin\pflatn.exe del /F ..\bin\pflatn.exe
+gcc -o ..\bin\pflatn.exe pflatn.c %CFLAGS% %LDFLAGS% 2> build.log
 endlocal

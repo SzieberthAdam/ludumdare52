@@ -72,11 +72,6 @@ bool vcount_in_equilibrium(uint8_t vcount[N])
 
 int main(void)
     {
-    SetTraceLogLevel(LOG_DEBUG); // TODO: DEBUG
-    int debugvar = 0;
-    char debugstr[256][256] = {0};
-
-    Vector2 cursor;
     char str[1024];
 
     uint16_t windowedScreenWidth = N * 64;
@@ -156,7 +151,7 @@ int main(void)
 
             case SCENE_NEWGAME:
             {
-                for (uint8_t row=0; row<8; row++)
+                for (uint8_t row=0; row<N; row++)
                 {
                     for (uint8_t col=0; col<N; col++)
                     {
@@ -245,7 +240,6 @@ int main(void)
 
                 uint8_t simboard[N][N];
                 uint8_t simvcount[N];
-                uint8_t d = 1;
                 bool equilibrium = false;
 
 

@@ -40,10 +40,10 @@
 #define SCENE_DRAWBOARD 1
 #define SCENE_GAME 2
 
-#define SIMDEPTH 4
+#define MAXSIMSTEPS 3
 
 
-void transform_board(uint8_t board[N][N], uint8_t vcount[N], uint8_t row, uint8_t col)
+void transform(uint8_t board[N][N], uint8_t vcount[N], uint8_t row, uint8_t col)
 {
     uint8_t v = board[row][col];
     for (uint8_t row1=((0 < row) ? row-1 : 0); row1<=((row < N-1) ? row+1 : N-1); row1++)
@@ -70,12 +70,40 @@ bool vcount_in_equilibrium(uint8_t vcount[N])
 }
 
 
+bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps)
+{
+    uint8_t simboard[N][N];
+    uint8_t simvcount[N];
+
+    char str[1024];
+    sprintf(str, "%p", board);
+    DrawText(str, 10, (20 * steps) + 7 + 64 * (N+1), 20, COLOR_FOREGROUND);
+    sprintf(str, "%p", &simboard);
+    DrawText(str, 200, (20 * steps) + 7 + 64 * (N+1), 20, COLOR_FOREGROUND);
+
+    if (steps == 0) return false;
+
+    for (uint8_t row=0; row<N; row++)
+    {
+        for (uint8_t col=0; col<N; col++)
+        {
+            memcpy(&simboard, board, N*N);
+            memcpy(&simvcount, vcount, N);
+            transform(simboard, simvcount, row, col);
+            if (vcount_in_equilibrium(simvcount)) return true;
+            if ((1 < steps) && simulate(&simboard, &simvcount, steps-1)) return true;
+        }
+    }
+    return false;
+}
+
+
 int main(void)
     {
     char str[1024];
 
     uint16_t windowedScreenWidth = N * 64;
-    uint16_t windowedScreenHeight = N * 64 + 32;
+    uint16_t windowedScreenHeight = N * 64 + 32 + 200;
     uint16_t screenWidth = windowedScreenWidth;
     uint16_t screenHeight = windowedScreenHeight;
 
@@ -91,6 +119,7 @@ int main(void)
     int currentGesture = GESTURE_NONE;
     int lastGesture = GESTURE_NONE;
 
+    //SetConfigFlags(FLAG_VSYNC_HINT);
     InitWindow(windowedScreenWidth, windowedScreenHeight, "pFLATn");
     Vector2 windowPos = GetWindowPosition();
 
@@ -143,8 +172,6 @@ int main(void)
 
         ClearBackground(RAYWHITE);
         DrawRectangle(0, 0, screenWidth, screenHeight, COLOR_BACKGROUND);
-
-        //DrawFPS(windowedScreenWidth-100, 10); // for debug
 
         switch (scene)
         {
@@ -232,40 +259,41 @@ int main(void)
                         {
                             if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
                             {
-                                transform_board(board, vcount, row, col);
+                                transform(board, vcount, row, col);
                             }
                         }
                     }
                 }
 
-                uint8_t simboard[N][N];
-                uint8_t simvcount[N];
-                bool equilibrium = false;
-
-
-                for (uint8_t row=0; row<N; row++)
-                {
-                    for (uint8_t col=0; col<N; col++)
-                    {
-                        memcpy(&simboard, &board, sizeof(board));
-                        memcpy(&simvcount, &vcount, sizeof(vcount));
-                        transform_board(simboard, simvcount, row, col);
-                        if (vcount_in_equilibrium(simvcount))
-                        {
-                            equilibrium = true;
-                            break;
-                        }
-                    }
-                    if (equilibrium) break;
-                }
+                uint8_t steps;
+                bool equilibrium = vcount_in_equilibrium(vcount);
                 if (equilibrium)
                 {
-                    DrawText("EQUILIBRIUM IN 1", 10, 7 + 64 * N, 20, COLOR_FOREGROUND);
-                };
-
+                    DrawText("CONGRATULATIONS!", 10, 7 + 64 * N, 20, COLOR_FOREGROUND);
+                }
+                else
+                {
+                    for (steps=1; steps <= MAXSIMSTEPS; steps++)
+                    {
+                        equilibrium = simulate(&board, &vcount, steps);
+                        if (equilibrium)
+                        {
+                            sprintf(str, "EQUILIBRIUM IN %d", steps);
+                            DrawText(str, 10, 7 + 64 * N, 20, COLOR_FOREGROUND);
+                            break;
+                        };
+                    }
+                }
+                if (!equilibrium)
+                {
+                    sprintf(str, "EQUILIBRIUM OVER %d", MAXSIMSTEPS);
+                    DrawText(str, 10, 7 + 64 * N, 20, COLOR_FOREGROUND);
+                }
             } break;
 
         }
+
+        DrawFPS(windowedScreenWidth-100, 10); // for debug
 
         EndDrawing();
         //----------------------------------------------------------------------------------

@@ -28,6 +28,8 @@
 #define TILECENTERSIZE 50
 #define TILEUNDERLEVEL 9
 #define TILEOVERLEVEL 9
+#define TILE_HOVER_COL 17
+#define TILE_LOCK_COL 18
 
 #define COLOR_BACKGROUND BLACK
 #define COLOR_FOREGROUND WHITE
@@ -117,21 +119,23 @@ void draw_board(HortirataData data, uint8_t vcount[N], uint8_t targetvcount, uin
         {
             uint8_t v = data.board[row][col];
             uint8_t i = (0 < vcount[v]) ? min(TILEUNDERLEVEL + TILEOVERLEVEL, TILEUNDERLEVEL + vcount[v] - targetvcount) : TILEUNDERLEVEL;
+            Rectangle dest = {viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE};
             if (0x80 <= v)
             {
-                DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * TILESIZE, 0, TILESIZE, TILESIZE}), ((Rectangle){viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE}), ((Vector2){0, 0}), 0, WHITE);
+                DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * TILESIZE, 0, TILESIZE, TILESIZE}), dest, ((Vector2){0, 0}), 0, WHITE);
             }
             else if (data.lastpick[0] == row && data.lastpick[1] == col)
             {
-                DrawTexturePro(tiles, ((Rectangle){i * TILESIZE, (1+v) * TILESIZE, TILESIZE, TILESIZE}), ((Rectangle){viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE}), ((Vector2){0, 0}), 0, GRAY);
+                DrawTexturePro(tiles, ((Rectangle){i * TILESIZE, (1+v) * TILESIZE, TILESIZE, TILESIZE}), dest, ((Vector2){0, 0}), 0, WHITE);
+                DrawTexturePro(tiles, ((Rectangle){TILE_LOCK_COL * TILESIZE, 0, TILESIZE, TILESIZE}), dest, ((Vector2){0, 0}), 0, WHITE);
             }
             else if (v == 0)
             {
-                DrawTexturePro(tiles, ((Rectangle){i * TILESIZE, (1+v) * TILESIZE, TILESIZE, TILESIZE}), ((Rectangle){viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE}), ((Vector2){0, 0}), 0, WHITE);
+                DrawTexturePro(tiles, ((Rectangle){i * TILESIZE, (1+v) * TILESIZE, TILESIZE, TILESIZE}), dest, ((Vector2){0, 0}), 0, WHITE);
             }
             else
             {
-                DrawTexturePro(tiles, ((Rectangle){i * TILESIZE, (1+v) * TILESIZE, TILESIZE, TILESIZE}), ((Rectangle){viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE}), ((Vector2){0, 0}), 0, WHITE);
+                DrawTexturePro(tiles, ((Rectangle){i * TILESIZE, (1+v) * TILESIZE, TILESIZE, TILESIZE}), dest, ((Vector2){0, 0}), 0, WHITE);
             }
         }
     }
@@ -277,29 +281,27 @@ int main(void)
 
             case SCENE_GAME:
             {
-                if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
-                {
-                    uint8_t row = (mouse.y - WY) / TILESIZE;
-                    uint8_t col = (mouse.x - WX) / TILESIZE;
-                    uint8_t rowmod = (uint32_t)(mouse.y - WY) % TILESIZE;
-                    uint8_t colmod = (uint32_t)(mouse.x - WX) % TILESIZE;
-                    uint8_t lbound = (TILESIZE-TILECENTERSIZE)/2;
-                    uint8_t ubound = TILECENTERSIZE + lbound - 1;
-                    if (
+                uint8_t row = (mouse.y - WY) / TILESIZE;
+                uint8_t col = (mouse.x - WX) / TILESIZE;
+                uint8_t rowmod = (uint32_t)(mouse.y - WY) % TILESIZE;
+                uint8_t colmod = (uint32_t)(mouse.x - WX) % TILESIZE;
+                uint8_t lbound = (TILESIZE-TILECENTERSIZE)/2;
+                uint8_t ubound = TILECENTERSIZE + lbound - 1;
+                uint8_t v = data.board[row][col];
+                bool validloc = \
+                (
+                        (0 < v && v < N)
+                        &&
                         (lbound <= rowmod && rowmod <= ubound && lbound <= colmod && colmod <= ubound)
                         &&
                         !(data.lastpick[0] == row && data.lastpick[1] == col)
-                    )
-                    {
-                        uint8_t v = data.board[row][col];
-                        if (0 < v && v < N)
-                        {
-                            transform(data.board, vcount, row, col);
-                            data.lastpick[0] = row;
-                            data.lastpick[1] = col;
-                            data.harvests++;
-                        }
-                    }
+                );
+                if (validloc && (currentGesture != lastGesture && currentGesture == GESTURE_TAP))
+                {
+                    transform(data.board, vcount, row, col);
+                    data.lastpick[0] = row;
+                    data.lastpick[1] = col;
+                    data.harvests++;
                 }
                 uint8_t eqharvests = 0;
                 bool equilibrium = vcount_in_equilibrium(vcount, N);
@@ -313,7 +315,13 @@ int main(void)
                     }
                     if (!equilibrium) eqharvests = STATE_MANYHARVESTS;
                 }
-                draw_board(data, vcount, 5, eqharvests, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), tiles);
+                Rectangle viewport = {WX,WY,windowedScreenWidth,windowedScreenHeight};
+                draw_board(data, vcount, 5, eqharvests, viewport, tiles);
+                if (validloc && (currentGesture == GESTURE_NONE || currentGesture == GESTURE_DRAG))
+                {
+                    Rectangle dest = {viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE};
+                    DrawTexturePro(tiles, ((Rectangle){TILE_HOVER_COL * TILESIZE, 0, TILESIZE, TILESIZE}), dest, ((Vector2){0, 0}), 0, WHITE);
+                }
             } break;
 
             case SCENE_WIN:

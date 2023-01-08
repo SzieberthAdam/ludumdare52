@@ -2,6 +2,8 @@
 ====
 
 1. Custom levels
+1. End screen
+1. Show level during draw
 1. Dummy tiles
 1. Title / Menu
 1. Sound 

@@ -40,14 +40,18 @@
 #define COLOR_TITLE YELLOW
 
 #define SCENE_NEWGAME_DEFAULT 10
-#define SCENE_NEWGAME 11
+#define SCENE_NEWGAME_LEVEL 11
+#define SCENE_NEWGAME 12
 #define SCENE_DRAWBOARD 20
 #define SCENE_GAME 30
 #define SCENE_WIN 40
+#define SCENE_THANKS 50
 
 #define STATE_WIN 0
 #define STATE_MANYHARVESTS 127
 #define STATE_BOARDUNDERCONSTRUCTION 255
+#define STATE_NEWLEVEL 0x80
+#define STATE_NEWLEVELWITHDRAW 0xC0
 
 #define MAXSIMHARVESTS N
 
@@ -190,7 +194,7 @@ bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t targetvcount, uint
 }
 
 
-void draw_board(HortirataData data, uint8_t vcount[N], uint8_t targetvcount, uint8_t eqharvests, Rectangle viewport, Texture2D bg, Texture2D tiles)
+void draw_board(HortirataData data, uint8_t vcount[N], uint8_t targetvcount, uint8_t eqharvests, uint8_t level, Rectangle viewport, Texture2D bg, Texture2D tiles)
 {
     DrawTexture(bg, viewport.x, viewport.y, WHITE);
     {
@@ -229,21 +233,18 @@ void draw_board(HortirataData data, uint8_t vcount[N], uint8_t targetvcount, uin
             }
         }
     }
-    switch (eqharvests)
-    {
-        case STATE_WIN: sprintf(str, "CONGRATULATIONS!"); break;
-        case STATE_MANYHARVESTS: sprintf(str, "EQUILIBRIUM OVER %d HARVESTS", MAXSIMHARVESTS); break;
-        case STATE_BOARDUNDERCONSTRUCTION: sprintf(str, "MOVE YOUR MOUSE!"); break;
-        default: sprintf(str, "EQUILIBRIUM IN %d HARVEST%s", eqharvests, ((eqharvests==1) ? "" : "S"));
-    }
+
+    if (eqharvests == STATE_WIN) sprintf(str, "CONGRATULATIONS!");
+    else if (eqharvests == STATE_MANYHARVESTS) sprintf(str, "EQUILIBRIUM OVER %d HARVESTS", MAXSIMHARVESTS);
+    else if (STATE_NEWLEVELWITHDRAW <= eqharvests) sprintf(str, "MOVE YOUR MOUSE!");
+    else sprintf(str, "EQUILIBRIUM IN %d HARVEST%s", eqharvests, ((eqharvests==1) ? "" : "S"));
+    int strwidth = MeasureText(str, 20);
+    DrawText(str, viewport.x + TILE_ORIGIN_X + viewport.width - strwidth - 73, viewport.y + TILE_ORIGIN_Y + TILESIZE * A + 55, 20, COLOR_FOREGROUND);
+
+
+    if (0 < data.harvests) sprintf(str, "%d HARVEST%s", data.harvests, ((data.harvests==1) ? "" : "S"));
+    else sprintf(str, "LEVEL %d", level);
     DrawText(str, viewport.x + TILE_ORIGIN_X + 9, viewport.y + TILE_ORIGIN_Y + TILESIZE * A + 55, 20, COLOR_FOREGROUND);
-    if (eqharvests != STATE_BOARDUNDERCONSTRUCTION)
-    {
-        if (data.harvests==0) sprintf(str, "NO HARVESTS YET");
-        else sprintf(str, "%d HARVEST%s", data.harvests, ((data.harvests==1) ? "" : "S"));
-        int strwidth = MeasureText(str, 20);
-        DrawText(str, viewport.x + TILE_ORIGIN_X + viewport.width - strwidth - 73, viewport.y + TILE_ORIGIN_Y + TILESIZE * A + 55, 20, COLOR_FOREGROUND);
-    }
     //DrawRectangleLinesEx(viewport, 1, MAGENTA);
 }
 
@@ -259,7 +260,9 @@ int main(void)
     uint8_t gamefields = 0;
     uint8_t randomfields = 0;
 
-    uint8_t scene = SCENE_NEWGAME_DEFAULT;
+    uint8_t level = 1;
+    uint8_t scene = SCENE_NEWGAME_LEVEL;
+    uint8_t scene = SCENE_THANKS; // TODO: temp
 
     Vector2 mouse;
     Vector2 mousedelta;
@@ -322,6 +325,8 @@ int main(void)
         // check for d key
         if (IsKeyPressed(KEY_D))
         {
+            sprintf(str, "LEVEL = %d", level);
+            TraceLog(LOG_DEBUG, str);
             TraceLog(LOG_DEBUG, "BOARD:");
             for (uint8_t row=0; row<A; row++)
             {
@@ -365,6 +370,15 @@ int main(void)
                 }
                 targetvcount = 5;
                 scene = SCENE_NEWGAME;
+            } break;
+
+            case SCENE_NEWGAME_LEVEL:
+            {
+                sprintf(str, "%s\\level%03d.hortirata", GetApplicationDirectory(), level);
+                TraceLog(LOG_DEBUG, str);
+                bool success = load(str, &data, vcount, &targetvcount);
+                if (success) scene = SCENE_NEWGAME;
+                else scene = SCENE_THANKS; // TODO: endscreen
             } break;
 
             case SCENE_NEWGAME:
@@ -444,7 +458,7 @@ int main(void)
                     }
                     if (0 == randomfields) scene = SCENE_GAME;
                 }
-                draw_board(data, vcount, targetvcount, STATE_BOARDUNDERCONSTRUCTION, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), bg, tiles);
+                draw_board(data, vcount, targetvcount, STATE_BOARDUNDERCONSTRUCTION, level, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), bg, tiles);
             } break;
 
             case SCENE_GAME:
@@ -475,7 +489,7 @@ int main(void)
                     data.lastpick[1] = col;
                     data.harvests++;
                 }
-                uint8_t eqharvests = 0;
+                uint8_t eqharvests = STATE_NEWLEVEL + level;
                 bool equilibrium = vcount_in_equilibrium(vcount, targetvcount);
                 if (equilibrium) scene = SCENE_WIN;
                 else
@@ -488,7 +502,7 @@ int main(void)
                     if (!equilibrium) eqharvests = STATE_MANYHARVESTS;
                 }
                 Rectangle viewport = {WX,WY,windowedScreenWidth,windowedScreenHeight};
-                draw_board(data, vcount, targetvcount, eqharvests, viewport, bg, tiles);
+                draw_board(data, vcount, targetvcount, eqharvests, level, viewport, bg, tiles);
                 if (validloc && (currentGesture == GESTURE_NONE || currentGesture == GESTURE_DRAG))
                 {
                     Rectangle dest = {viewport.x + TILE_ORIGIN_X + col * TILESIZE, viewport.y + TILE_ORIGIN_Y + row * TILESIZE, TILESIZE, TILESIZE};
@@ -498,9 +512,21 @@ int main(void)
 
             case SCENE_WIN:
             {
-                if (currentGesture != lastGesture && currentGesture == GESTURE_TAP) scene = SCENE_NEWGAME;
-                draw_board(data, vcount, targetvcount, STATE_WIN, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), bg, tiles);
+                if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
+                {
+                    level++;
+                    scene = SCENE_NEWGAME_LEVEL;
+                }
+                draw_board(data, vcount, targetvcount, STATE_WIN, level, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), bg, tiles);
             } break;
+
+            case SCENE_THANKS:
+            {
+                sprintf(str, "THANKS FOR PLAYING!");
+                int strwidth = MeasureText(str, 20);
+                Rectangle viewport = {WX,WY,windowedScreenWidth,windowedScreenHeight};
+                DrawText(str, viewport.x + (viewport.width - strwidth) / 2, 100, 20, COLOR_FOREGROUND);
+            }
 
         }
 
@@ -516,7 +542,11 @@ int main(void)
             if (droppedfiles.count == 1)
             {
                 bool success = load(droppedfiles.paths[0], &data, vcount, &targetvcount);
-                if (success) scene = SCENE_NEWGAME;
+                if (success)
+                {
+                    level = 0;
+                    scene = SCENE_NEWGAME;
+                }
             }
             UnloadDroppedFiles(droppedfiles);
         }
@@ -525,7 +555,11 @@ int main(void)
         {
             sprintf(str, "%s\\%s", GetApplicationDirectory(), "puzzle.hortirata");
             bool success = load(str, &data, vcount, &targetvcount);
-            if (success) scene = SCENE_NEWGAME;
+            if (success)
+            {
+                level = 0;
+                scene = SCENE_NEWGAME;
+            }
         }
         // Quicksave
         if (IsKeyPressed(KEY_S))

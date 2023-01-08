@@ -35,6 +35,9 @@
 
 #define MAXSIMSTEPS N
 
+#define WX ((screenWidth - windowedScreenWidth) / 2)
+#define WY ((screenHeight - windowedScreenHeight) / 2)
+
 
 void transform(uint8_t board[A][A], uint8_t vcount[N], uint8_t row, uint8_t col)
 {
@@ -138,7 +141,7 @@ int main(void)
     while (!WindowShouldClose())
     {
         // check for alt + enter
-        if (IsKeyPressed(KEY_ENTER) && (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)))
+        if (IsKeyPressed(KEY_F10) || ((IsKeyPressed(KEY_ENTER) && (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT)))))
         {
             // instead of the true fullscreen which would be the following...
             // if (IsWindowFullscreen()) {ToggleFullscreen(); SetWindowSize(windowedScreenWidth, windowedScreenHeight);}
@@ -230,16 +233,16 @@ int main(void)
                         uint8_t v = board[row][col];
                         if (0x80 <= v)
                         {
-                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
                         }
                         else
                         {
                             uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
-                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
                         }
                     }
                 }
-                DrawText("MOVE YOUR MOUSE", 10, 7 + 64 * A, 20, COLOR_FOREGROUND);
+                DrawText("MOVE YOUR MOUSE", WX + 10, WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
             } break;
 
             case SCENE_GAME:
@@ -252,20 +255,20 @@ int main(void)
                         uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
                         if (0x80 <= v)
                         {
-                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
                         }
                         else if (lastpick[0] == row && lastpick[1] == col)
                         {
-                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, GRAY);
+                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, GRAY);
                         }
                         else if (v == 0)
                         {
-                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
                         }
                         else
                         {
-                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
-                            if (CheckCollisionPointRec(mouse, ((Rectangle){1 + 64 * col, 1 + 64 * row, 62, 62})))
+                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                            if (CheckCollisionPointRec(mouse, ((Rectangle){WX + 1 + 64 * col, WY + 1 + 64 * row, 62, 62})))
                             {
                                 if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
                                 {
@@ -291,14 +294,14 @@ int main(void)
                         if (equilibrium)
                         {
                             sprintf(str, "EQUILIBRIUM IN %d HARVEST%s", steps, ((steps==1) ? "" : "S"));
-                            DrawText(str, 10, 7 + 64 * A, 20, COLOR_FOREGROUND);
+                            DrawText(str, WX + 10, WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
                             break;
                         };
                     }
                     if (!equilibrium)
                     {
                         sprintf(str, "EQUILIBRIUM OVER %d HARVESTS", MAXSIMSTEPS);
-                        DrawText(str, 10, 7 + 64 * A, 20, COLOR_FOREGROUND);
+                        DrawText(str, WX + 10, WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
                     }
                 }
 
@@ -311,7 +314,7 @@ int main(void)
                     sprintf(str, "%d HARVEST%s", hcount, ((hcount==1) ? "" : "S"));
                 }
                 int strwidth = MeasureText(str, 20);
-                DrawText(str, -10 + windowedScreenWidth - strwidth , 7 + 64 * A, 20, COLOR_FOREGROUND);
+                DrawText(str, WX - 10 + windowedScreenWidth - strwidth , WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
 
             } break;
 
@@ -324,16 +327,16 @@ int main(void)
                         uint8_t v = board[row][col];
                         if (0x80 <= v)
                         {
-                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
                         }
                         else
                         {
                             uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
-                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
                         }
                     }
                 }
-                DrawText("CONGRATULATIONS!", 10, 7 + 64 * A, 20, COLOR_FOREGROUND);
+                DrawText("CONGRATULATIONS!", WX + 10, WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
                 if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
                 {
                     scene = SCENE_NEWGAME;

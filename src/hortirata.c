@@ -62,7 +62,7 @@ typedef struct __attribute__((__packed__, __scalar_storage_order__("big-endian")
 
 
 
-bool load(const char *fileName, HortirataData *data, uint8_t vcount[N])
+bool load(const char *fileName, HortirataData *data, uint8_t vcount[N], uint8_t *targetvcount)
 {
     if (!FileExists(fileName)) return false;
     unsigned int filelength = GetFileLength(fileName);
@@ -72,13 +72,18 @@ bool load(const char *fileName, HortirataData *data, uint8_t vcount[N])
     data->harvests = 0;
     memcpy(&data->board, filedata, filelength);
     for (uint8_t v=0; v<N; v++) vcount[v] = 0;
+    uint8_t valid_v_count = 0;
     for (uint8_t row=0; row<A; row++)
     {
         for (uint8_t col=0; col<A; col++)
         {
             uint8_t v = data->board[row][col];
-            if (v < N) vcount[v]++;
+            if (v < N){
+                vcount[v]++;
+                valid_v_count++;
+            }
         }
+        *targetvcount = valid_v_count / N; // TODO: handle remainder
     }
     UnloadFileData(filedata);
     return true;
@@ -103,17 +108,17 @@ void transform(uint8_t board[A][A], uint8_t vcount[N], uint8_t row, uint8_t col)
     }
 }
 
-bool vcount_in_equilibrium(uint8_t vcount[N], uint8_t target)
+bool vcount_in_equilibrium(uint8_t vcount[N], uint8_t targetvcount)
 {
     for (uint8_t v=0; v<N; v++)
     {
-        if (vcount[v] != target) return false;
+        if (vcount[v] != targetvcount) return false;
     }
     return true;
 }
 
 
-bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t harvests, uint8_t lastpick[2])
+bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t targetvcount, uint8_t harvests, uint8_t lastpick[2])
 {
     uint8_t simboard[A][A];
     uint8_t simvcount[N];
@@ -130,8 +135,8 @@ bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t harvests, uint8_t 
                 memcpy(&simboard, board, A*A);
                 memcpy(&simvcount, vcount, N);
                 transform(simboard, simvcount, row, col);
-                if (vcount_in_equilibrium(simvcount, N)) return true;
-                if ((1 < harvests) && simulate(simboard, simvcount, harvests-1, ((uint8_t[2]){row, col}))) return true;
+                if (vcount_in_equilibrium(simvcount, targetvcount)) return true;
+                if ((1 < harvests) && simulate(simboard, simvcount, targetvcount, harvests-1, ((uint8_t[2]){row, col}))) return true;
             }
         }
     }
@@ -203,6 +208,7 @@ int main(void)
 
     HortirataData data;
     uint8_t vcount[N];
+    uint8_t targetvcount;
 
     uint8_t scene = SCENE_NEWGAME;
 
@@ -276,6 +282,8 @@ int main(void)
             TraceLog(LOG_DEBUG, "VCOUNT:");
             sprintf(str, "[ 0:%3d , 1:%3d , 2:%3d , 3:%3d , 4:%3d ]", vcount[0], vcount[1], vcount[2], vcount[3], vcount[4]);
             TraceLog(LOG_DEBUG, str);
+            sprintf(str, "TARGET VCOUNT: %d", targetvcount);
+            TraceLog(LOG_DEBUG, str);
         }
 
         screenWidth = GetScreenWidth();
@@ -306,6 +314,7 @@ int main(void)
                         else data.board[row][col] = 0x80 + 1;
                     }
                 }
+                targetvcount = 5;
                 scene = SCENE_DRAWBOARD;
             }
 
@@ -337,7 +346,7 @@ int main(void)
                     }
                 }
                 else scene = SCENE_GAME;
-                draw_board(data, vcount, 5, STATE_BOARDUNDERCONSTRUCTION, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), bg, tiles);
+                draw_board(data, vcount, targetvcount, STATE_BOARDUNDERCONSTRUCTION, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), bg, tiles);
             } break;
 
             case SCENE_GAME:
@@ -369,19 +378,19 @@ int main(void)
                     data.harvests++;
                 }
                 uint8_t eqharvests = 0;
-                bool equilibrium = vcount_in_equilibrium(vcount, N);
+                bool equilibrium = vcount_in_equilibrium(vcount, targetvcount);
                 if (equilibrium) scene = SCENE_WIN;
                 else
                 {
                     for (eqharvests=1; eqharvests <= MAXSIMHARVESTS; eqharvests++)
                     {
-                        equilibrium = simulate(data.board, vcount, eqharvests, data.lastpick);
+                        equilibrium = simulate(data.board, vcount, targetvcount, eqharvests, data.lastpick);
                         if (equilibrium) break;
                     }
                     if (!equilibrium) eqharvests = STATE_MANYHARVESTS;
                 }
                 Rectangle viewport = {WX,WY,windowedScreenWidth,windowedScreenHeight};
-                draw_board(data, vcount, 5, eqharvests, viewport, bg, tiles);
+                draw_board(data, vcount, targetvcount, eqharvests, viewport, bg, tiles);
                 if (validloc && (currentGesture == GESTURE_NONE || currentGesture == GESTURE_DRAG))
                 {
                     Rectangle dest = {viewport.x + TILE_ORIGIN_X + col * TILESIZE, viewport.y + TILE_ORIGIN_Y + row * TILESIZE, TILESIZE, TILESIZE};
@@ -392,7 +401,7 @@ int main(void)
             case SCENE_WIN:
             {
                 if (currentGesture != lastGesture && currentGesture == GESTURE_TAP) scene = SCENE_NEWGAME;
-                draw_board(data, vcount, 5, STATE_WIN, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), bg, tiles);
+                draw_board(data, vcount, targetvcount, STATE_WIN, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), bg, tiles);
             } break;
 
         }
@@ -408,7 +417,7 @@ int main(void)
             FilePathList droppedfiles = LoadDroppedFiles();
             if (droppedfiles.count == 1)
             {
-                bool success = load(droppedfiles.paths[0], &data, vcount);
+                bool success = load(droppedfiles.paths[0], &data, vcount, &targetvcount);
                 if (success) scene = SCENE_GAME;
             }
             UnloadDroppedFiles(droppedfiles);
@@ -417,7 +426,7 @@ int main(void)
         if (IsKeyPressed(KEY_L))
         {
             sprintf(str, "%s\\%s", GetApplicationDirectory(), "puzzle.hortirata");
-            bool success = load(str, &data, vcount);
+            bool success = load(str, &data, vcount, &targetvcount);
             if (success) scene = SCENE_GAME;
         }
         // Quicksave

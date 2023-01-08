@@ -22,7 +22,7 @@
 #endif
 
 #define N 5
-#define M 3
+#define M 2
 #define A (N + 2*M)
 
 #define COLOR_BACKGROUND BLACK

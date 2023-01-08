@@ -3,7 +3,7 @@
 #include <string.h>
 
 // TSC clock
-// https://stackoverflow.com/questions/13772567/how-to-get-the-cpu-cycle-count-in-x86-64-from-c
+// https://stackoverflow.com/questions/13772567/how-to-get-the-cpu-cycle-count-in-x86-TILESIZE-from-c
 #ifdef _MSC_VER
 # include <intrin.h>
 #else
@@ -24,6 +24,10 @@
 #define N 5
 #define M 2
 #define A (N + 2*M)
+#define TILESIZE 64
+#define TILECENTERSIZE 50
+#define TILEUNDERLEVEL 9
+#define TILEOVERLEVEL 9
 
 #define COLOR_BACKGROUND BLACK
 #define COLOR_FOREGROUND WHITE
@@ -33,16 +37,21 @@
 #define SCENE_GAME 2
 #define SCENE_WIN 3
 
-#define MAXSIMSTEPS N
+#define STATE_WIN 0
+#define STATE_MANYHARVESTS 127
+#define STATE_BOARDUNDERCONSTRUCTION 255
+
+#define MAXSIMHARVESTS N
 
 #define WX ((screenWidth - windowedScreenWidth) / 2)
 #define WY ((screenHeight - windowedScreenHeight) / 2)
 
+char str[1024];
 
 typedef struct __attribute__((__packed__, __scalar_storage_order__("big-endian"))) {
     uint8_t board[A][A];
     uint8_t lastpick[2];
-    uint32_t hcount;
+    uint32_t harvests;
 } HortirataData;
 
 
@@ -74,12 +83,12 @@ bool vcount_in_equilibrium(uint8_t vcount[N], uint8_t target)
 }
 
 
-bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t steps, uint8_t lastpick[2])
+bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t harvests, uint8_t lastpick[2])
 {
     uint8_t simboard[A][A];
     uint8_t simvcount[N];
 
-    if (steps == 0) return false;
+    if (harvests == 0) return false;
 
     for (uint8_t row=0; row<A; row++)
     {
@@ -91,14 +100,8 @@ bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t steps, uint8_t las
                 memcpy(&simboard, board, A*A);
                 memcpy(&simvcount, vcount, N);
                 transform(simboard, simvcount, row, col);
-                if (vcount_in_equilibrium(simvcount, N))
-                {
-                    return true;
-                }
-                if ((1 < steps) && simulate(simboard, simvcount, steps-1, ((uint8_t[2]){row, col})))
-                {
-                    return true;
-                }
+                if (vcount_in_equilibrium(simvcount, N)) return true;
+                if ((1 < harvests) && simulate(simboard, simvcount, harvests-1, ((uint8_t[2]){row, col}))) return true;
             }
         }
     }
@@ -106,17 +109,59 @@ bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t steps, uint8_t las
 }
 
 
+void draw_board(HortirataData data, uint8_t vcount[N], uint8_t targetvcount, uint8_t eqharvests, Rectangle viewport, Texture2D tiles)
+{
+    for (uint8_t row=0; row<A; row++)
+    {
+        for (uint8_t col=0; col<A; col++)
+        {
+            uint8_t v = data.board[row][col];
+            uint8_t i = (0 < vcount[v]) ? min(TILEUNDERLEVEL + TILEOVERLEVEL, TILEUNDERLEVEL + vcount[v] - targetvcount) : TILEUNDERLEVEL;
+            if (0x80 <= v)
+            {
+                DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * TILESIZE, 0, TILESIZE, TILESIZE}), ((Rectangle){viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE}), ((Vector2){0, 0}), 0, WHITE);
+            }
+            else if (data.lastpick[0] == row && data.lastpick[1] == col)
+            {
+                DrawTexturePro(tiles, ((Rectangle){i * TILESIZE, (1+v) * TILESIZE, TILESIZE, TILESIZE}), ((Rectangle){viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE}), ((Vector2){0, 0}), 0, GRAY);
+            }
+            else if (v == 0)
+            {
+                DrawTexturePro(tiles, ((Rectangle){i * TILESIZE, (1+v) * TILESIZE, TILESIZE, TILESIZE}), ((Rectangle){viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE}), ((Vector2){0, 0}), 0, WHITE);
+            }
+            else
+            {
+                DrawTexturePro(tiles, ((Rectangle){i * TILESIZE, (1+v) * TILESIZE, TILESIZE, TILESIZE}), ((Rectangle){viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE}), ((Vector2){0, 0}), 0, WHITE);
+            }
+        }
+    }
+    switch (eqharvests)
+    {
+        case STATE_WIN: sprintf(str, "CONGRATULATIONS!"); break;
+        case STATE_MANYHARVESTS: sprintf(str, "EQUILIBRIUM OVER %d HARVESTS", MAXSIMHARVESTS); break;
+        case STATE_BOARDUNDERCONSTRUCTION: sprintf(str, "MOVE YOUR MOUSE!"); break;
+        default: sprintf(str, "EQUILIBRIUM IN %d HARVEST%s", eqharvests, ((eqharvests==1) ? "" : "S"));
+    }
+    DrawText(str, viewport.x + 10, viewport.y + 7 + TILESIZE * A, 20, COLOR_FOREGROUND);
+    if (eqharvests != STATE_BOARDUNDERCONSTRUCTION)
+    {
+        if (data.harvests==0) sprintf(str, "NO HARVESTS YET");
+        else sprintf(str, "%d HARVEST%s", data.harvests, ((data.harvests==1) ? "" : "S"));
+        int strwidth = MeasureText(str, 20);
+        DrawText(str, viewport.x + viewport.width - 10 - strwidth , viewport.y + 7 + TILESIZE * A, 20, COLOR_FOREGROUND);
+    }
+}
+
+
 int main(void)
     {
-    // SetTraceLogLevel(LOG_DEBUG);
+    SetTraceLogLevel(LOG_DEBUG);
 
     HortirataData data;
     uint8_t vcount[N];
 
-    char str[1024];
-
-    uint16_t windowedScreenWidth = A * 64;
-    uint16_t windowedScreenHeight = A * 64 + 32;
+    uint16_t windowedScreenWidth = A * TILESIZE;
+    uint16_t windowedScreenHeight = A * TILESIZE + 32;
     uint16_t screenWidth = windowedScreenWidth;
     uint16_t screenHeight = windowedScreenHeight;
 
@@ -127,20 +172,14 @@ int main(void)
     int currentGesture = GESTURE_NONE;
     int lastGesture = GESTURE_NONE;
 
-
+    SetConfigFlags(FLAG_VSYNC_HINT);
+    SetTargetFPS(TARGET_FPS);
     sprintf(str, "%s\\%s", GetApplicationDirectory(), "tiles.png");
     Image tiles_image = LoadImage(str);
-
-    SetConfigFlags(FLAG_VSYNC_HINT);
     InitWindow(windowedScreenWidth, windowedScreenHeight, "Hortirata");
     Vector2 windowPos = GetWindowPosition();
-
     Texture2D tiles = LoadTextureFromImage(tiles_image); // STRICTLY AFTER InitWindow();!
-
     UnloadImage(tiles_image);
-
-    SetTargetFPS(TARGET_FPS);
-
     int display = GetCurrentMonitor(); // see what display we are on right now
 
     while (!WindowShouldClose())
@@ -192,20 +231,14 @@ int main(void)
             case SCENE_NEWGAME:
             {
                 memset(data.lastpick, 255, 2);
-                data.hcount = 0;
+                data.harvests = 0;
                 for (uint8_t v=0; v<N; v++) vcount[v] = 0;
                 for (uint8_t row=0; row<A; row++)
                 {
                     for (uint8_t col=0; col<A; col++)
                     {
-                        if (M <= row && row < A-M && M <= col && col < A-M)
-                        {
-                            data.board[row][col] = 0x80 + 0;
-                        }
-                        else
-                        {
-                            data.board[row][col] = 0x80 + 1;
-                        }
+                        if (M <= row && row < A-M && M <= col && col < A-M) data.board[row][col] = 0x80 + 0;
+                        else data.board[row][col] = 0x80 + 1;
                     }
                 }
                 scene = SCENE_DRAWBOARD;
@@ -238,138 +271,59 @@ int main(void)
                         }
                     }
                 }
-                else
-                {
-                    scene = SCENE_GAME;
-                }
-                for (uint8_t row=0; row<A; row++)
-                {
-                    for (uint8_t col=0; col<A; col++)
-                    {
-                        uint8_t v = data.board[row][col];
-                        if (0x80 <= v)
-                        {
-                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
-                        }
-                        else
-                        {
-                            uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
-                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
-                        }
-                    }
-                }
-                DrawText("MOVE YOUR MOUSE", WX + 10, WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
+                else scene = SCENE_GAME;
+                draw_board(data, vcount, 5, STATE_BOARDUNDERCONSTRUCTION, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), tiles);
             } break;
 
             case SCENE_GAME:
             {
-                for (uint8_t row=0; row<A; row++)
+                if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
                 {
-                    for (uint8_t col=0; col<A; col++)
+                    uint8_t row = (mouse.y - WY) / TILESIZE;
+                    uint8_t col = (mouse.x - WX) / TILESIZE;
+                    uint8_t rowmod = (uint32_t)(mouse.y - WY) % TILESIZE;
+                    uint8_t colmod = (uint32_t)(mouse.x - WX) % TILESIZE;
+                    uint8_t lbound = (TILESIZE-TILECENTERSIZE)/2;
+                    uint8_t ubound = TILECENTERSIZE + lbound - 1;
+                    sprintf(str, "mouse:[%f,%f]->[%d,%d] mods=(%d,%d)", mouse.x, mouse.y, row, col, rowmod, colmod);
+                    TraceLog(LOG_DEBUG, str);
+                    if (
+                        (lbound <= rowmod && rowmod <= ubound && lbound <= colmod && colmod <= ubound)
+                        &&
+                        !(data.lastpick[0] == row && data.lastpick[1] == col)
+                    )
                     {
                         uint8_t v = data.board[row][col];
-                        uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
-                        if (0x80 <= v)
+                        sprintf(str, "v=%d", v);
+                        TraceLog(LOG_DEBUG, str);
+                        if (0 < v && v < N)
                         {
-                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                            transform(data.board, vcount, row, col);
+                            data.lastpick[0] = row;
+                            data.lastpick[1] = col;
+                            data.harvests++;
                         }
-                        else if (data.lastpick[0] == row && data.lastpick[1] == col)
-                        {
-                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, GRAY);
-                        }
-                        else if (v == 0)
-                        {
-                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
-                        }
-                        else
-                        {
-                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
-                            if (CheckCollisionPointRec(mouse, ((Rectangle){WX + 1 + 64 * col, WY + 1 + 64 * row, 62, 62})))
-                            {
-                                if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
-                                {
-                                    transform(data.board, vcount, row, col);
-                                    data.lastpick[0] = row;
-                                    data.lastpick[1] = col;
-                                    data.hcount++;
-                                }
-                            }
-                        }
-
                     }
                 }
-
-                uint8_t steps;
+                uint8_t eqharvests = 0;
                 bool equilibrium = vcount_in_equilibrium(vcount, N);
                 if (equilibrium) scene = SCENE_WIN;
                 else
                 {
-                    for (steps=1; steps <= MAXSIMSTEPS; steps++)
+                    for (eqharvests=1; eqharvests <= MAXSIMHARVESTS; eqharvests++)
                     {
-                        equilibrium = simulate(data.board, vcount, steps, data.lastpick);
-                        if (equilibrium)
-                        {
-                            sprintf(str, "EQUILIBRIUM IN %d HARVEST%s", steps, ((steps==1) ? "" : "S"));
-                            DrawText(str, WX + 10, WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
-                            break;
-                        };
+                        equilibrium = simulate(data.board, vcount, eqharvests, data.lastpick);
+                        if (equilibrium) break;
                     }
-                    if (!equilibrium)
-                    {
-                        sprintf(str, "EQUILIBRIUM OVER %d HARVESTS", MAXSIMSTEPS);
-                        DrawText(str, WX + 10, WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
-                    }
+                    if (!equilibrium) eqharvests = STATE_MANYHARVESTS;
                 }
-
-                if (data.hcount==0)
-                {
-                    sprintf(str, "NO HARVESTS YET");
-                }
-                else
-                {
-                    sprintf(str, "%d HARVEST%s", data.hcount, ((data.hcount==1) ? "" : "S"));
-                }
-                int strwidth = MeasureText(str, 20);
-                DrawText(str, WX - 10 + windowedScreenWidth - strwidth , WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
-
+                draw_board(data, vcount, 5, eqharvests, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), tiles);
             } break;
 
             case SCENE_WIN:
             {
-                for (uint8_t row=0; row<A; row++)
-                {
-                    for (uint8_t col=0; col<A; col++)
-                    {
-                        uint8_t v = data.board[row][col];
-                        if (0x80 <= v)
-                        {
-                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
-                        }
-                        else
-                        {
-                            uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
-                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
-                        }
-                    }
-                }
-
-                DrawText("CONGRATULATIONS!", WX + 10, WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
-
-                if (data.hcount==0)
-                {
-                    sprintf(str, "NO HARVESTS YET");
-                }
-                else
-                {
-                    sprintf(str, "%d HARVEST%s", data.hcount, ((data.hcount==1) ? "" : "S"));
-                }
-                int strwidth = MeasureText(str, 20);
-                DrawText(str, WX - 10 + windowedScreenWidth - strwidth , WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
-
-                if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
-                {
-                    scene = SCENE_NEWGAME;
-                };
+                if (currentGesture != lastGesture && currentGesture == GESTURE_TAP) scene = SCENE_NEWGAME;
+                draw_board(data, vcount, 5, STATE_WIN, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), tiles);
             } break;
 
         }

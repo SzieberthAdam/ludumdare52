@@ -9,6 +9,7 @@ SET LDFLAGS=-lraylib -lopengl32 -lgdi32 -lwinmm
 if exist ..\bin\hortirata.exe del /F ..\bin\hortirata.exe
 gcc -o ..\bin\hortirata.exe hortirata.c %CFLAGS% %LDFLAGS% 2> build.log
 
-copy /Y ..\tiles\tiles.png ..\bin
+copy /Y ..\artwork\bg.png ..\bin
+copy /Y ..\artwork\tiles.png ..\bin
 
 endlocal

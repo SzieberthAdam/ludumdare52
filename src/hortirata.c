@@ -30,9 +30,13 @@
 #define TILEOVERLEVEL 9
 #define TILE_HOVER_COL 17
 #define TILE_LOCK_COL 18
+#define TILE_ORIGIN_X 32
+#define TILE_ORIGIN_Y 96
+
 
 #define COLOR_BACKGROUND BLACK
 #define COLOR_FOREGROUND WHITE
+#define COLOR_TITLE YELLOW
 
 #define SCENE_NEWGAME 0
 #define SCENE_DRAWBOARD 1
@@ -111,15 +115,26 @@ bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t harvests, uint8_t 
 }
 
 
-void draw_board(HortirataData data, uint8_t vcount[N], uint8_t targetvcount, uint8_t eqharvests, Rectangle viewport, Texture2D tiles)
+void draw_board(HortirataData data, uint8_t vcount[N], uint8_t targetvcount, uint8_t eqharvests, Rectangle viewport, Texture2D bg, Texture2D tiles)
 {
+    DrawTexture(bg, viewport.x, viewport.y, WHITE);
+    {
+        sprintf(str, "HORTIRATA");
+        int strwidth = MeasureText(str, 30);
+        DrawText(str, viewport.x + (uint16_t)((viewport.width - strwidth)/2), viewport.y + 11, 30, COLOR_TITLE);
+    }
+    {
+        sprintf(str, "A game for Ludum Dare 52 (Theme: Harvest) by SZIEBERTH ""\xC3\x81""d""\xC3\xA1""m");
+        int strwidth = MeasureText(str, 10);
+        DrawText(str, viewport.x + (uint16_t)((viewport.width - strwidth)/2), viewport.y + 41, 10, COLOR_FOREGROUND);
+    }
     for (uint8_t row=0; row<A; row++)
     {
         for (uint8_t col=0; col<A; col++)
         {
             uint8_t v = data.board[row][col];
             uint8_t i = (0 < vcount[v]) ? min(TILEUNDERLEVEL + TILEOVERLEVEL, TILEUNDERLEVEL + vcount[v] - targetvcount) : TILEUNDERLEVEL;
-            Rectangle dest = {viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE};
+            Rectangle dest = {viewport.x + TILE_ORIGIN_X + col * TILESIZE, viewport.y + TILE_ORIGIN_Y + row * TILESIZE, TILESIZE, TILESIZE};
             if (0x80 <= v)
             {
                 DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * TILESIZE, 0, TILESIZE, TILESIZE}), dest, ((Vector2){0, 0}), 0, WHITE);
@@ -146,14 +161,15 @@ void draw_board(HortirataData data, uint8_t vcount[N], uint8_t targetvcount, uin
         case STATE_BOARDUNDERCONSTRUCTION: sprintf(str, "MOVE YOUR MOUSE!"); break;
         default: sprintf(str, "EQUILIBRIUM IN %d HARVEST%s", eqharvests, ((eqharvests==1) ? "" : "S"));
     }
-    DrawText(str, viewport.x + 10, viewport.y + 7 + TILESIZE * A, 20, COLOR_FOREGROUND);
+    DrawText(str, viewport.x + TILE_ORIGIN_X + 9, viewport.y + TILE_ORIGIN_Y + TILESIZE * A + 55, 20, COLOR_FOREGROUND);
     if (eqharvests != STATE_BOARDUNDERCONSTRUCTION)
     {
         if (data.harvests==0) sprintf(str, "NO HARVESTS YET");
         else sprintf(str, "%d HARVEST%s", data.harvests, ((data.harvests==1) ? "" : "S"));
         int strwidth = MeasureText(str, 20);
-        DrawText(str, viewport.x + viewport.width - 10 - strwidth , viewport.y + 7 + TILESIZE * A, 20, COLOR_FOREGROUND);
+        DrawText(str, viewport.x + TILE_ORIGIN_X + viewport.width - strwidth - 73, viewport.y + TILE_ORIGIN_Y + TILESIZE * A + 55, 20, COLOR_FOREGROUND);
     }
+    //DrawRectangleLinesEx(viewport, 1, MAGENTA);
 }
 
 
@@ -164,11 +180,6 @@ int main(void)
     HortirataData data;
     uint8_t vcount[N];
 
-    uint16_t windowedScreenWidth = A * TILESIZE;
-    uint16_t windowedScreenHeight = A * TILESIZE + 32;
-    uint16_t screenWidth = windowedScreenWidth;
-    uint16_t screenHeight = windowedScreenHeight;
-
     uint8_t scene = SCENE_NEWGAME;
 
     Vector2 mouse;
@@ -178,12 +189,24 @@ int main(void)
 
     SetConfigFlags(FLAG_VSYNC_HINT);
     SetTargetFPS(TARGET_FPS);
+    sprintf(str, "%s\\%s", GetApplicationDirectory(), "bg.png");
+    Image bg_image = LoadImage(str);
+    uint16_t windowedScreenWidth = bg_image.width;
+    uint16_t windowedScreenHeight = bg_image.height;
+    uint16_t screenWidth = windowedScreenWidth;
+    uint16_t screenHeight = windowedScreenHeight;
+
     sprintf(str, "%s\\%s", GetApplicationDirectory(), "tiles.png");
     Image tiles_image = LoadImage(str);
     InitWindow(windowedScreenWidth, windowedScreenHeight, "Hortirata");
     Vector2 windowPos = GetWindowPosition();
-    Texture2D tiles = LoadTextureFromImage(tiles_image); // STRICTLY AFTER InitWindow();!
+
+    // call LoadTextureFromImage(); STRICTLY AFTER InitWindow();!
+    Texture2D bg = LoadTextureFromImage(bg_image);
+    UnloadImage(bg_image);
+    Texture2D tiles = LoadTextureFromImage(tiles_image);
     UnloadImage(tiles_image);
+
     int display = GetCurrentMonitor(); // see what display we are on right now
 
     while (!WindowShouldClose())
@@ -276,20 +299,24 @@ int main(void)
                     }
                 }
                 else scene = SCENE_GAME;
-                draw_board(data, vcount, 5, STATE_BOARDUNDERCONSTRUCTION, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), tiles);
+                draw_board(data, vcount, 5, STATE_BOARDUNDERCONSTRUCTION, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), bg, tiles);
             } break;
 
             case SCENE_GAME:
             {
-                uint8_t row = (mouse.y - WY) / TILESIZE;
-                uint8_t col = (mouse.x - WX) / TILESIZE;
-                uint8_t rowmod = (uint32_t)(mouse.y - WY) % TILESIZE;
-                uint8_t colmod = (uint32_t)(mouse.x - WX) % TILESIZE;
+                uint8_t row = (mouse.y - WY - TILE_ORIGIN_Y) / TILESIZE;
+                uint8_t col = (mouse.x - WX - TILE_ORIGIN_X) / TILESIZE;
+                uint8_t rowmod = (uint32_t)(mouse.y - WY - TILE_ORIGIN_Y) % TILESIZE;
+                uint8_t colmod = (uint32_t)(mouse.x - WX - TILE_ORIGIN_X) % TILESIZE;
                 uint8_t lbound = (TILESIZE-TILECENTERSIZE)/2;
                 uint8_t ubound = TILECENTERSIZE + lbound - 1;
                 uint8_t v = data.board[row][col];
+                //sprintf(str, "mouse:[%d,%d]->[%d,%d] mods=(%d,%d); v=%d", (uint16_t)mouse.x, (uint16_t)mouse.y, row, col, rowmod, colmod, v);
+                //TraceLog(LOG_DEBUG, str);
                 bool validloc = \
                 (
+                        (row < A && col < A)
+                        &&
                         (0 < v && v < N)
                         &&
                         (lbound <= rowmod && rowmod <= ubound && lbound <= colmod && colmod <= ubound)
@@ -316,10 +343,10 @@ int main(void)
                     if (!equilibrium) eqharvests = STATE_MANYHARVESTS;
                 }
                 Rectangle viewport = {WX,WY,windowedScreenWidth,windowedScreenHeight};
-                draw_board(data, vcount, 5, eqharvests, viewport, tiles);
+                draw_board(data, vcount, 5, eqharvests, viewport, bg, tiles);
                 if (validloc && (currentGesture == GESTURE_NONE || currentGesture == GESTURE_DRAG))
                 {
-                    Rectangle dest = {viewport.x + col * TILESIZE, viewport.y + row * TILESIZE, TILESIZE, TILESIZE};
+                    Rectangle dest = {viewport.x + TILE_ORIGIN_X + col * TILESIZE, viewport.y + TILE_ORIGIN_Y + row * TILESIZE, TILESIZE, TILESIZE};
                     DrawTexturePro(tiles, ((Rectangle){TILE_HOVER_COL * TILESIZE, 0, TILESIZE, TILESIZE}), dest, ((Vector2){0, 0}), 0, WHITE);
                 }
             } break;
@@ -327,7 +354,7 @@ int main(void)
             case SCENE_WIN:
             {
                 if (currentGesture != lastGesture && currentGesture == GESTURE_TAP) scene = SCENE_NEWGAME;
-                draw_board(data, vcount, 5, STATE_WIN, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), tiles);
+                draw_board(data, vcount, 5, STATE_WIN, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), bg, tiles);
             } break;
 
         }
@@ -341,6 +368,7 @@ int main(void)
     // De-Initialization
     //--------------------------------------------------------------------------------------
     CloseWindow();        // Close window and OpenGL context
+    UnloadTexture(bg);
     UnloadTexture(tiles);
     //--------------------------------------------------------------------------------------
 

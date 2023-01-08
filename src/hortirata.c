@@ -285,8 +285,6 @@ int main(void)
                     uint8_t colmod = (uint32_t)(mouse.x - WX) % TILESIZE;
                     uint8_t lbound = (TILESIZE-TILECENTERSIZE)/2;
                     uint8_t ubound = TILECENTERSIZE + lbound - 1;
-                    sprintf(str, "mouse:[%f,%f]->[%d,%d] mods=(%d,%d)", mouse.x, mouse.y, row, col, rowmod, colmod);
-                    TraceLog(LOG_DEBUG, str);
                     if (
                         (lbound <= rowmod && rowmod <= ubound && lbound <= colmod && colmod <= ubound)
                         &&
@@ -294,8 +292,6 @@ int main(void)
                     )
                     {
                         uint8_t v = data.board[row][col];
-                        sprintf(str, "v=%d", v);
-                        TraceLog(LOG_DEBUG, str);
                         if (0 < v && v < N)
                         {
                             transform(data.board, vcount, row, col);
@@ -328,7 +324,7 @@ int main(void)
 
         }
 
-        //DrawFPS(windowedScreenWidth-100, 10); // for debug
+        //DrawFPS(screenWidth-100, 10); // for debug
 
         EndDrawing();
         //----------------------------------------------------------------------------------

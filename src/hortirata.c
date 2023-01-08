@@ -61,6 +61,30 @@ typedef struct __attribute__((__packed__, __scalar_storage_order__("big-endian")
 } HortirataData;
 
 
+
+bool load(const char *fileName, HortirataData *data, uint8_t vcount[N])
+{
+    if (!FileExists(fileName)) return false;
+    unsigned int filelength = GetFileLength(fileName);
+    if (filelength != A * A) return false;
+    unsigned char* filedata = LoadFileData(fileName, &filelength);
+    memset(data->lastpick, 255, 2);
+    data->harvests = 0;
+    memcpy(&data->board, filedata, filelength);
+    for (uint8_t v=0; v<N; v++) vcount[v] = 0;
+    for (uint8_t row=0; row<A; row++)
+    {
+        for (uint8_t col=0; col<A; col++)
+        {
+            uint8_t v = data->board[row][col];
+            if (v < N) vcount[v]++;
+        }
+    }
+    UnloadFileData(filedata);
+    return true;
+}
+
+
 void transform(uint8_t board[A][A], uint8_t vcount[N], uint8_t row, uint8_t col)
 {
     uint8_t v = board[row][col];
@@ -177,7 +201,6 @@ int main(void)
     {
     SetTraceLogLevel(LOG_DEBUG);
 
-    unsigned char* filedata;
     HortirataData data;
     uint8_t vcount[N];
 
@@ -379,48 +402,25 @@ int main(void)
         EndDrawing();
         //----------------------------------------------------------------------------------
 
-        // Load
+        // Load by drop
         if (IsFileDropped())
         {
             FilePathList droppedfiles = LoadDroppedFiles();
             if (droppedfiles.count == 1)
             {
-                unsigned int filelength = GetFileLength(droppedfiles.paths[0]);
-                if (filelength == A * A)
-                {
-                    filedata = LoadFileData(droppedfiles.paths[0], &filelength);
-                    memset(data.lastpick, 255, 2);
-                    data.harvests = 0;
-                    memcpy(&data.board, filedata, filelength);
-                    for (uint8_t v=0; v<N; v++) vcount[v] = 0;
-                    for (uint8_t row=0; row<A; row++)
-                    {
-                        for (uint8_t col=0; col<A; col++)
-                        {
-                            uint8_t v = data.board[row][col];
-                            if (v < N) vcount[v]++;
-                            sprintf(str, "[%d,%d]=%d (%d)", row, col, v, vcount[v]);
-                            TraceLog(LOG_DEBUG, str);
-                        }
-                    }
-                    UnloadFileData(filedata);
-                    scene = SCENE_GAME;
-                }
+                bool success = load(droppedfiles.paths[0], &data, vcount);
+                if (success) scene = SCENE_GAME;
             }
             UnloadDroppedFiles(droppedfiles);
-
-            TraceLog(LOG_DEBUG, "BOARD:");
-            for (uint8_t row=0; row<A; row++)
-            {
-                sprintf(str, "| %3d | %3d | %3d | %3d | %3d | %3d | %3d | %3d | %3d |", data.board[row][0], data.board[row][1], data.board[row][2], data.board[row][3], data.board[row][4], data.board[row][5], data.board[row][6], data.board[row][7], data.board[row][8]);
-                TraceLog(LOG_DEBUG, str);
-            }
-            TraceLog(LOG_DEBUG, "VCOUNT:");
-            sprintf(str, "[ 0:%3d , 1:%3d , 2:%3d , 3:%3d , 4:%3d ]", vcount[0], vcount[1], vcount[2], vcount[3], vcount[4]);
-            TraceLog(LOG_DEBUG, str);
-
         }
-        // Save
+        // Quickload
+        if (IsKeyPressed(KEY_L))
+        {
+            sprintf(str, "%s\\%s", GetApplicationDirectory(), "puzzle.hortirata");
+            bool success = load(str, &data, vcount);
+            if (success) scene = SCENE_GAME;
+        }
+        // Quicksave
         if (IsKeyPressed(KEY_S))
         {
             sprintf(str, "%s\\%s", GetApplicationDirectory(), "puzzle.hortirata");

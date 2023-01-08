@@ -1,7 +1,6 @@
 ﻿TODO
 ====
 
-1. Load / Save
 1. Generated target number
 1. -9..-5 tiles
 1. Title / Menu

@@ -66,10 +66,6 @@ bool vcount_in_equilibrium(uint8_t vcount[N], uint8_t target)
 
 bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t steps, uint8_t lastpick[2])
 {
-
-    //SetTraceLogLevel(LOG_DEBUG); // TODO: DEBUG
-    //char str[1024] = {0};
-
     uint8_t simboard[A][A];
     uint8_t simvcount[N];
 
@@ -87,8 +83,6 @@ bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t steps, uint8_t las
                 transform(simboard, simvcount, row, col);
                 if (vcount_in_equilibrium(simvcount, N))
                 {
-                    //sprintf(str, "steps=%d, [%d,%d]=%d last:[%d,%d]", steps, row, col, v, lastpick[0], lastpick[1]);
-                    //TraceLog(LOG_DEBUG, str);
                     return true;
                 }
                 if ((1 < steps) && simulate(simboard, simvcount, steps-1, ((uint8_t[2]){row, col})))
@@ -116,6 +110,7 @@ int main(void)
     uint8_t board[A][A];
     uint8_t vcount[N];
     uint8_t lastpick[2] = {255, 255};
+    uint32_t hcount;
 
     uint16_t uintvar[16] = {0};
 
@@ -188,6 +183,7 @@ int main(void)
             case SCENE_NEWGAME:
             {
                 memset(lastpick, 255, 2);
+                hcount = 0;
                 for (uint8_t v=0; v<N; v++) vcount[v] = 0;
                 for (uint8_t row=0; row<A; row++)
                 {
@@ -261,19 +257,6 @@ int main(void)
                         else if (lastpick[0] == row && lastpick[1] == col)
                         {
                             DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, GRAY);
-
-                            // DEBUG ONLY
-                            {
-                                if (CheckCollisionPointRec(mouse, ((Rectangle){1 + 64 * col, 1 + 64 * row, 62, 62})))
-                                {
-                                    if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
-                                    {
-                                        transform(board, vcount, row, col);
-                                        lastpick[0] = row;
-                                        lastpick[1] = col;
-                                    }
-                                }
-                            }
                         }
                         else if (v == 0)
                         {
@@ -289,6 +272,7 @@ int main(void)
                                     transform(board, vcount, row, col);
                                     lastpick[0] = row;
                                     lastpick[1] = col;
+                                    hcount++;
                                 }
                             }
                         }
@@ -306,17 +290,29 @@ int main(void)
                         equilibrium = simulate(board, vcount, steps, lastpick);
                         if (equilibrium)
                         {
-                            sprintf(str, "EQUILIBRIUM IN %d", steps);
+                            sprintf(str, "EQUILIBRIUM IN %d HARVEST%s", steps, ((steps==1) ? "" : "S"));
                             DrawText(str, 10, 7 + 64 * A, 20, COLOR_FOREGROUND);
                             break;
                         };
                     }
                     if (!equilibrium)
                     {
-                        sprintf(str, "EQUILIBRIUM OVER %d", MAXSIMSTEPS);
+                        sprintf(str, "EQUILIBRIUM OVER %d HARVESTS", MAXSIMSTEPS);
                         DrawText(str, 10, 7 + 64 * A, 20, COLOR_FOREGROUND);
                     }
                 }
+
+                if (hcount==0)
+                {
+                    sprintf(str, "NO HARVESTS YET");
+                }
+                else
+                {
+                    sprintf(str, "%d HARVEST%s", hcount, ((hcount==1) ? "" : "S"));
+                }
+                int strwidth = MeasureText(str, 20);
+                DrawText(str, -10 + windowedScreenWidth - strwidth , 7 + 64 * A, 20, COLOR_FOREGROUND);
+
             } break;
 
             case SCENE_WIN:

@@ -251,7 +251,7 @@ void draw_board(HortirataData data, uint8_t vcount[N], uint8_t targetvcount, uin
 
 int main(void)
     {
-    SetTraceLogLevel(LOG_DEBUG);
+    //SetTraceLogLevel(LOG_DEBUG);
 
     HortirataData data;
     uint8_t vcount[N];
@@ -374,7 +374,6 @@ int main(void)
             case SCENE_NEWGAME_LEVEL:
             {
                 sprintf(str, "%s\\level%03d.hortirata", GetApplicationDirectory(), level);
-                TraceLog(LOG_DEBUG, str);
                 bool success = load(str, &data, vcount, &targetvcount);
                 if (success) scene = SCENE_NEWGAME;
                 else scene = SCENE_THANKS; // TODO: endscreen
@@ -412,8 +411,8 @@ int main(void)
                     }
                     uint8_t remgamefields = targetvcount * N - gamefields;
                     uint8_t remdummyfields = randomfields - remgamefields;
-                    sprintf(str, "TARGET VCOUNT: %d ; valid: %d (%d), random: %d (%d)", targetvcount, gamefields, remgamefields, randomfields, remdummyfields);
-                    TraceLog(LOG_DEBUG, str);
+                    //sprintf(str, "TARGET VCOUNT: %d ; valid: %d (%d), random: %d (%d)", targetvcount, gamefields, remgamefields, randomfields, remdummyfields);
+                    //TraceLog(LOG_DEBUG, str);
                     if (0 < remgamefields && 0 < remdummyfields)
                     {
                         uint8_t populationsize = randomfields;
@@ -436,8 +435,8 @@ int main(void)
                                 randomfields--;
                             }
                         }
-                        sprintf(str, "populationsize: %d ; randsize: %d ; randmask: %d; v: %d; v1: %d", populationsize, randsize, randmask, v, v1);
-                        TraceLog(LOG_DEBUG, str);
+                        //sprintf(str, "populationsize: %d ; randsize: %d ; randmask: %d; v: %d; v1: %d", populationsize, randsize, randmask, v, v1);
+                        //TraceLog(LOG_DEBUG, str);
                     }
                     if (0 < remgamefields && 0 == remdummyfields)
                     {

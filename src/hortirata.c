@@ -108,7 +108,7 @@ bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t steps, uint8_t las
 
 int main(void)
     {
-    SetTraceLogLevel(LOG_DEBUG);
+    // SetTraceLogLevel(LOG_DEBUG);
 
     HortirataData data;
     uint8_t vcount[N];
@@ -173,16 +173,6 @@ int main(void)
                 SetWindowPosition(0, 0);
             }
         }
-        // check for d key
-        if (IsKeyPressed(KEY_D))
-        {
-            TraceLog(LOG_DEBUG, "BOARD:");
-            for (uint8_t row=0; row<A; row++)
-            {
-                sprintf(str, "| %3d | %3d | %3d | %3d | %3d | %3d | %3d | %3d | %3d | %3d | %3d |", data.board[row][0], data.board[row][1], data.board[row][2], data.board[row][3], data.board[row][4], data.board[row][5], data.board[row][6], data.board[row][7], data.board[row][8], data.board[row][9], data.board[row][10]);
-                TraceLog(LOG_DEBUG, str);
-            }
-        }
 
         screenWidth = GetScreenWidth();
         screenHeight = GetScreenHeight();
@@ -233,9 +223,6 @@ int main(void)
                     }
                     if (v == 0x80) break;
                 }
-                char str[1000];
-                sprintf(str, "[%d,%d]=%d", row, col, v);
-                TraceLog(LOG_DEBUG, str);
                 if (v == 0x80)
                 {
                     if (currentGesture == GESTURE_DRAG) mousedelta = GetGestureDragVector();
@@ -246,8 +233,6 @@ int main(void)
                         uint8_t v = __rdtsc() & 0x07; // random value
                         if (v < N)
                         {
-                            sprintf(str, "%d", v);
-                            TraceLog(LOG_DEBUG, str);
                             data.board[row][col] = v;
                             vcount[v]++;
                         }

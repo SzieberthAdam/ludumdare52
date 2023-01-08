@@ -39,6 +39,13 @@
 #define WY ((screenHeight - windowedScreenHeight) / 2)
 
 
+typedef struct __attribute__((__packed__, __scalar_storage_order__("big-endian"))) {
+    uint8_t board[A][A];
+    uint8_t lastpick[2];
+    uint32_t hcount;
+} HortirataData;
+
+
 void transform(uint8_t board[A][A], uint8_t vcount[N], uint8_t row, uint8_t col)
 {
     uint8_t v = board[row][col];
@@ -101,6 +108,11 @@ bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t steps, uint8_t las
 
 int main(void)
     {
+    SetTraceLogLevel(LOG_DEBUG);
+
+    HortirataData data;
+    uint8_t vcount[N];
+
     char str[1024];
 
     uint16_t windowedScreenWidth = A * 64;
@@ -109,13 +121,6 @@ int main(void)
     uint16_t screenHeight = windowedScreenHeight;
 
     uint8_t scene = SCENE_NEWGAME;
-
-    uint8_t board[A][A];
-    uint8_t vcount[N];
-    uint8_t lastpick[2] = {255, 255};
-    uint32_t hcount;
-
-    uint16_t uintvar[16] = {0};
 
     Vector2 mouse;
     Vector2 mousedelta;
@@ -168,6 +173,17 @@ int main(void)
                 SetWindowPosition(0, 0);
             }
         }
+        // check for d key
+        if (IsKeyPressed(KEY_D))
+        {
+            TraceLog(LOG_DEBUG, "BOARD:");
+            for (uint8_t row=0; row<A; row++)
+            {
+                sprintf(str, "| %3d | %3d | %3d | %3d | %3d | %3d | %3d | %3d | %3d | %3d | %3d |", data.board[row][0], data.board[row][1], data.board[row][2], data.board[row][3], data.board[row][4], data.board[row][5], data.board[row][6], data.board[row][7], data.board[row][8], data.board[row][9], data.board[row][10]);
+                TraceLog(LOG_DEBUG, str);
+            }
+        }
+
         screenWidth = GetScreenWidth();
         screenHeight = GetScreenHeight();
 
@@ -185,8 +201,8 @@ int main(void)
 
             case SCENE_NEWGAME:
             {
-                memset(lastpick, 255, 2);
-                hcount = 0;
+                memset(data.lastpick, 255, 2);
+                data.hcount = 0;
                 for (uint8_t v=0; v<N; v++) vcount[v] = 0;
                 for (uint8_t row=0; row<A; row++)
                 {
@@ -194,43 +210,58 @@ int main(void)
                     {
                         if (M <= row && row < A-M && M <= col && col < A-M)
                         {
-                            board[row][col] = 0x80 + 0;
+                            data.board[row][col] = 0x80 + 0;
                         }
                         else
                         {
-                            board[row][col] = 0x80 + 1;
+                            data.board[row][col] = 0x80 + 1;
                         }
                     }
                 }
                 scene = SCENE_DRAWBOARD;
             }
 
-            case SCENE_DRAWBOARD:  // draw
+            case SCENE_DRAWBOARD:
             {
-                uint8_t fieldcount = N;
-                if (currentGesture == GESTURE_DRAG) mousedelta = GetGestureDragVector();
-                else mousedelta = GetMouseDelta();
-                bool running_mouse = mousedelta.x != (float)(0) || mousedelta.y != (float)(0);
-                if (running_mouse)
+                uint8_t row, col, v;
+                for (row=0; row<A; ++row)
                 {
-                    uint8_t v = __rdtsc() & 0x07; // random value
-                    if (v < fieldcount)
+                    for (col=0; col<A; ++col)
                     {
-                        board[M + uintvar[0] / N][M + uintvar[0] % N] = v;
-                        vcount[v]++;
-                        if (uintvar[0] == N*N - 1)
-                        {
-                            uintvar[0] = 0;
-                            scene = SCENE_GAME;
-                        }
-                        else uintvar[0]++;
+                        v = data.board[row][col];
+                        if (v == 0x80) break;
                     }
+                    if (v == 0x80) break;
+                }
+                char str[1000];
+                sprintf(str, "[%d,%d]=%d", row, col, v);
+                TraceLog(LOG_DEBUG, str);
+                if (v == 0x80)
+                {
+                    if (currentGesture == GESTURE_DRAG) mousedelta = GetGestureDragVector();
+                    else mousedelta = GetMouseDelta();
+                    bool running_mouse = mousedelta.x != (float)(0) || mousedelta.y != (float)(0);
+                    if (running_mouse)
+                    {
+                        uint8_t v = __rdtsc() & 0x07; // random value
+                        if (v < N)
+                        {
+                            sprintf(str, "%d", v);
+                            TraceLog(LOG_DEBUG, str);
+                            data.board[row][col] = v;
+                            vcount[v]++;
+                        }
+                    }
+                }
+                else
+                {
+                    scene = SCENE_GAME;
                 }
                 for (uint8_t row=0; row<A; row++)
                 {
                     for (uint8_t col=0; col<A; col++)
                     {
-                        uint8_t v = board[row][col];
+                        uint8_t v = data.board[row][col];
                         if (0x80 <= v)
                         {
                             DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
@@ -251,13 +282,13 @@ int main(void)
                 {
                     for (uint8_t col=0; col<A; col++)
                     {
-                        uint8_t v = board[row][col];
+                        uint8_t v = data.board[row][col];
                         uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
                         if (0x80 <= v)
                         {
                             DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
                         }
-                        else if (lastpick[0] == row && lastpick[1] == col)
+                        else if (data.lastpick[0] == row && data.lastpick[1] == col)
                         {
                             DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, GRAY);
                         }
@@ -272,10 +303,10 @@ int main(void)
                             {
                                 if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
                                 {
-                                    transform(board, vcount, row, col);
-                                    lastpick[0] = row;
-                                    lastpick[1] = col;
-                                    hcount++;
+                                    transform(data.board, vcount, row, col);
+                                    data.lastpick[0] = row;
+                                    data.lastpick[1] = col;
+                                    data.hcount++;
                                 }
                             }
                         }
@@ -290,7 +321,7 @@ int main(void)
                 {
                     for (steps=1; steps <= MAXSIMSTEPS; steps++)
                     {
-                        equilibrium = simulate(board, vcount, steps, lastpick);
+                        equilibrium = simulate(data.board, vcount, steps, data.lastpick);
                         if (equilibrium)
                         {
                             sprintf(str, "EQUILIBRIUM IN %d HARVEST%s", steps, ((steps==1) ? "" : "S"));
@@ -305,13 +336,13 @@ int main(void)
                     }
                 }
 
-                if (hcount==0)
+                if (data.hcount==0)
                 {
                     sprintf(str, "NO HARVESTS YET");
                 }
                 else
                 {
-                    sprintf(str, "%d HARVEST%s", hcount, ((hcount==1) ? "" : "S"));
+                    sprintf(str, "%d HARVEST%s", data.hcount, ((data.hcount==1) ? "" : "S"));
                 }
                 int strwidth = MeasureText(str, 20);
                 DrawText(str, WX - 10 + windowedScreenWidth - strwidth , WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
@@ -324,7 +355,7 @@ int main(void)
                 {
                     for (uint8_t col=0; col<A; col++)
                     {
-                        uint8_t v = board[row][col];
+                        uint8_t v = data.board[row][col];
                         if (0x80 <= v)
                         {
                             DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){WX + col * 64, WY + row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
@@ -336,7 +367,20 @@ int main(void)
                         }
                     }
                 }
+
                 DrawText("CONGRATULATIONS!", WX + 10, WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
+
+                if (data.hcount==0)
+                {
+                    sprintf(str, "NO HARVESTS YET");
+                }
+                else
+                {
+                    sprintf(str, "%d HARVEST%s", data.hcount, ((data.hcount==1) ? "" : "S"));
+                }
+                int strwidth = MeasureText(str, 20);
+                DrawText(str, WX - 10 + windowedScreenWidth - strwidth , WY + 7 + 64 * A, 20, COLOR_FOREGROUND);
+
                 if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
                 {
                     scene = SCENE_NEWGAME;

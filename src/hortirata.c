@@ -1,3 +1,4 @@
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -38,10 +39,11 @@
 #define COLOR_FOREGROUND WHITE
 #define COLOR_TITLE YELLOW
 
-#define SCENE_NEWGAME 0
-#define SCENE_DRAWBOARD 1
-#define SCENE_GAME 2
-#define SCENE_WIN 3
+#define SCENE_NEWGAME_DEFAULT 10
+#define SCENE_NEWGAME 11
+#define SCENE_DRAWBOARD 20
+#define SCENE_GAME 30
+#define SCENE_WIN 40
 
 #define STATE_WIN 0
 #define STATE_MANYHARVESTS 127
@@ -61,6 +63,51 @@ typedef struct __attribute__((__packed__, __scalar_storage_order__("big-endian")
 } HortirataData;
 
 
+// Greatest power of 2 less than or equal to x. Hacker's Delight, Figure 3-1.
+unsigned flp2(unsigned x)
+{
+    x = x | (x >> 1);
+    x = x | (x >> 2);
+    x = x | (x >> 4);
+    x = x | (x >> 8);
+    x = x | (x >> 16);
+    return x - (x >> 1);
+}
+
+// Least power of 2 greater than or equal to x. Hacker's Delight, Figure 3-3.
+unsigned clp2(unsigned x)
+{
+    x = x - 1;
+    x = x | (x >> 1);
+    x = x | (x >> 2);
+    x = x | (x >> 4);
+    x = x | (x >> 8);
+    x = x | (x >> 16);
+    return x + 1;
+}
+
+// Find first set bit in an integer.
+unsigned ffs(int n)
+{
+    return log2(n & -n) + 1;
+}
+
+
+void setfields(uint8_t board[A][A], uint8_t *gamefields, uint8_t *randomfields)
+{
+    *gamefields = 0;
+    *randomfields = 0;
+    for (uint8_t row=0; row<A; row++)
+    {
+        for (uint8_t col=0; col<A; col++)
+        {
+            uint8_t v = board[row][col];
+            if (v < N) *gamefields = *gamefields+1;
+            else if (v==0x80) *randomfields = *randomfields+1;
+        }
+    }
+}
+
 
 bool load(const char *fileName, HortirataData *data, uint8_t vcount[N], uint8_t *targetvcount)
 {
@@ -72,18 +119,17 @@ bool load(const char *fileName, HortirataData *data, uint8_t vcount[N], uint8_t 
     data->harvests = 0;
     memcpy(&data->board, filedata, filelength);
     for (uint8_t v=0; v<N; v++) vcount[v] = 0;
-    uint8_t valid_v_count = 0;
+    uint8_t gamefields = 0;
+    uint8_t randomfields = 0;
     for (uint8_t row=0; row<A; row++)
     {
         for (uint8_t col=0; col<A; col++)
         {
             uint8_t v = data->board[row][col];
-            if (v < N){
-                vcount[v]++;
-                valid_v_count++;
-            }
+            if (v < N) vcount[v]++;
         }
-        *targetvcount = valid_v_count / N; // TODO: handle remainder
+        setfields(data->board, &gamefields, &randomfields);
+        *targetvcount = (gamefields + randomfields) / N;
     }
     UnloadFileData(filedata);
     return true;
@@ -210,7 +256,10 @@ int main(void)
     uint8_t vcount[N];
     uint8_t targetvcount;
 
-    uint8_t scene = SCENE_NEWGAME;
+    uint8_t gamefields = 0;
+    uint8_t randomfields = 0;
+
+    uint8_t scene = SCENE_NEWGAME_DEFAULT;
 
     Vector2 mouse;
     Vector2 mousedelta;
@@ -282,7 +331,7 @@ int main(void)
             TraceLog(LOG_DEBUG, "VCOUNT:");
             sprintf(str, "[ 0:%3d , 1:%3d , 2:%3d , 3:%3d , 4:%3d ]", vcount[0], vcount[1], vcount[2], vcount[3], vcount[4]);
             TraceLog(LOG_DEBUG, str);
-            sprintf(str, "TARGET VCOUNT: %d", targetvcount);
+            sprintf(str, "TARGET VCOUNT: %d ; valid: %d, random: %d", targetvcount, gamefields, randomfields);
             TraceLog(LOG_DEBUG, str);
         }
 
@@ -301,7 +350,7 @@ int main(void)
         switch (scene)
         {
 
-            case SCENE_NEWGAME:
+            case SCENE_NEWGAME_DEFAULT:
             {
                 memset(data.lastpick, 255, 2);
                 data.harvests = 0;
@@ -315,37 +364,86 @@ int main(void)
                     }
                 }
                 targetvcount = 5;
-                scene = SCENE_DRAWBOARD;
-            }
+                scene = SCENE_NEWGAME;
+            } break;
+
+            case SCENE_NEWGAME:
+            {
+                setfields(data.board, &gamefields, &randomfields);
+                if (0 == randomfields) scene = SCENE_GAME;
+                else scene = SCENE_DRAWBOARD;
+            } break;
 
             case SCENE_DRAWBOARD:
             {
-                uint8_t row, col, v;
-                for (row=0; row<A; ++row)
-                {
-                    for (col=0; col<A; ++col)
-                    {
-                        v = data.board[row][col];
-                        if (v == 0x80) break;
-                    }
-                    if (v == 0x80) break;
-                }
-                if (v == 0x80)
+                bool entropy = false;
+                if (IsKeyPressed(KEY_SPACE)) entropy = true;
+                if (!entropy)
                 {
                     if (currentGesture == GESTURE_DRAG) mousedelta = GetGestureDragVector();
                     else mousedelta = GetMouseDelta();
-                    bool running_mouse = mousedelta.x != (float)(0) || mousedelta.y != (float)(0);
-                    if (running_mouse)
+                    entropy = mousedelta.x != (float)(0) || mousedelta.y != (float)(0);
+                }
+                if (0 < randomfields && entropy)
+                {
+                    uint64_t randomvalue = __rdtsc();
+                    uint8_t row, col, v;
+                    for (row=0; row<A; ++row)
                     {
-                        uint8_t v = __rdtsc() & 0x07; // random value
+                        for (col=0; col<A; ++col)
+                        {
+                            v = data.board[row][col];
+                            if (v == 0x80) break;
+                        }
+                        if (v == 0x80) break;
+                    }
+                    uint8_t remgamefields = targetvcount * N - gamefields;
+                    uint8_t remdummyfields = randomfields - remgamefields;
+                    sprintf(str, "TARGET VCOUNT: %d ; valid: %d (%d), random: %d (%d)", targetvcount, gamefields, remgamefields, randomfields, remdummyfields);
+                    TraceLog(LOG_DEBUG, str);
+                    if (0 < remgamefields && 0 < remdummyfields)
+                    {
+                        uint8_t populationsize = randomfields;
+                        uint8_t randsize = clp2(populationsize);
+                        uint8_t randmask = (randsize * 2 - 1) << 3;
+                        uint8_t v1 = (randomvalue & randmask) >> 3;
+                        uint8_t v = randomvalue & 0x07;
+                        if (v < N)
+                        {
+                            if (v1 < remdummyfields)
+                            {
+                                data.board[row][col] = 0x81;
+                                randomfields--;
+                            }
+                            else if (v < populationsize)
+                            {
+                                data.board[row][col] = v;
+                                vcount[v]++;
+                                gamefields++;
+                                randomfields--;
+                            }
+                        }
+                        sprintf(str, "populationsize: %d ; randsize: %d ; randmask: %d; v: %d; v1: %d", populationsize, randsize, randmask, v, v1);
+                        TraceLog(LOG_DEBUG, str);
+                    }
+                    if (0 < remgamefields && 0 == remdummyfields)
+                    {
+                        uint8_t v = randomvalue & 0x07;
                         if (v < N)
                         {
                             data.board[row][col] = v;
                             vcount[v]++;
+                            gamefields++;
+                            randomfields--;
                         }
                     }
+                    else if (0 == remgamefields && 0 < remdummyfields)
+                    {
+                        data.board[row][col] = 0x81;
+                        randomfields--;
+                    }
+                    if (0 == randomfields) scene = SCENE_GAME;
                 }
-                else scene = SCENE_GAME;
                 draw_board(data, vcount, targetvcount, STATE_BOARDUNDERCONSTRUCTION, ((Rectangle){WX,WY,windowedScreenWidth,windowedScreenHeight}), bg, tiles);
             } break;
 
@@ -418,7 +516,7 @@ int main(void)
             if (droppedfiles.count == 1)
             {
                 bool success = load(droppedfiles.paths[0], &data, vcount, &targetvcount);
-                if (success) scene = SCENE_GAME;
+                if (success) scene = SCENE_NEWGAME;
             }
             UnloadDroppedFiles(droppedfiles);
         }
@@ -427,7 +525,7 @@ int main(void)
         {
             sprintf(str, "%s\\%s", GetApplicationDirectory(), "puzzle.hortirata");
             bool success = load(str, &data, vcount, &targetvcount);
-            if (success) scene = SCENE_GAME;
+            if (success) scene = SCENE_NEWGAME;
         }
         // Quicksave
         if (IsKeyPressed(KEY_S))

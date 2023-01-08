@@ -1,7 +1,0 @@
-hortirata.c: In function 'main':
-hortirata.c:265:13: error: redefinition of 'scene'
-  265 |     uint8_t scene = SCENE_THANKS; // TODO: temp
-      |             ^~~~~
-hortirata.c:264:13: note: previous definition of 'scene' with type 'uint8_t' {aka 'unsigned char'}
-  264 |     uint8_t scene = SCENE_NEWGAME_LEVEL;
-      |             ^~~~~

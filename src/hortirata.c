@@ -262,7 +262,6 @@ int main(void)
 
     uint8_t level = 1;
     uint8_t scene = SCENE_NEWGAME_LEVEL;
-    uint8_t scene = SCENE_THANKS; // TODO: temp
 
     Vector2 mouse;
     Vector2 mousedelta;

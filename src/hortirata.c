@@ -22,6 +22,8 @@
 #endif
 
 #define N 5
+#define M 3
+#define A (N + 2*M)
 
 #define COLOR_BACKGROUND BLACK
 #define COLOR_FOREGROUND WHITE
@@ -34,15 +36,16 @@
 #define MAXSIMSTEPS N
 
 
-void transform(uint8_t board[N][N], uint8_t vcount[N], uint8_t row, uint8_t col)
+void transform(uint8_t board[A][A], uint8_t vcount[N], uint8_t row, uint8_t col)
 {
     uint8_t v = board[row][col];
-    for (uint8_t row1=((0 < row) ? row-1 : 0); row1<=((row < N-1) ? row+1 : N-1); row1++)
+    for (uint8_t row1=((0 < row) ? row-1 : 0); row1<=((row < A-1) ? row+1 : A-1); row1++)
     {
-        for (uint8_t col1=((0 < col) ? col-1 : 0); col1<=((col < N-1) ? col+1 : N-1); col1++)
+        for (uint8_t col1=((0 < col) ? col-1 : 0); col1<=((col < A-1) ? col+1 : A-1); col1++)
         {
             if ((row1==row) && (col1==col)) continue;
             uint8_t v0 = board[row1][col1];
+            if (0x80 <= v0) continue;
             uint8_t v1 = (v0 + v) % N;
             board[row1][col1] = v1;
             vcount[v0]--;
@@ -51,35 +54,47 @@ void transform(uint8_t board[N][N], uint8_t vcount[N], uint8_t row, uint8_t col)
     }
 }
 
-bool vcount_in_equilibrium(uint8_t vcount[N])
+bool vcount_in_equilibrium(uint8_t vcount[N], uint8_t target)
 {
     for (uint8_t v=0; v<N; v++)
     {
-        if (vcount[v] != N) return false;
+        if (vcount[v] != target) return false;
     }
     return true;
 }
 
 
-bool simulate(uint8_t *board[N][N], uint8_t *vcount[N], uint8_t steps, uint8_t lastpick[2])
+bool simulate(uint8_t board[A][A], uint8_t vcount[N], uint8_t steps, uint8_t lastpick[2])
 {
-    uint8_t simboard[N][N];
+
+    //SetTraceLogLevel(LOG_DEBUG); // TODO: DEBUG
+    //char str[1024] = {0};
+
+    uint8_t simboard[A][A];
     uint8_t simvcount[N];
 
     if (steps == 0) return false;
 
-    for (uint8_t row=0; row<N; row++)
+    for (uint8_t row=0; row<A; row++)
     {
-        for (uint8_t col=0; col<N; col++)
+        for (uint8_t col=0; col<A; col++)
         {
             uint8_t v = board[row][col];
-            if (0 < v && lastpick[0] != row && lastpick[1] != col)
+            if (0 < v && v < N && !(lastpick[0] == row && lastpick[1] == col))
             {
-                memcpy(&simboard, board, N*N);
+                memcpy(&simboard, board, A*A);
                 memcpy(&simvcount, vcount, N);
                 transform(simboard, simvcount, row, col);
-                if (vcount_in_equilibrium(simvcount)) return true;
-                if ((1 < steps) && simulate(&simboard, &simvcount, steps-1, ((uint8_t[2]){row, col}))) return true;
+                if (vcount_in_equilibrium(simvcount, N))
+                {
+                    //sprintf(str, "steps=%d, [%d,%d]=%d last:[%d,%d]", steps, row, col, v, lastpick[0], lastpick[1]);
+                    //TraceLog(LOG_DEBUG, str);
+                    return true;
+                }
+                if ((1 < steps) && simulate(simboard, simvcount, steps-1, ((uint8_t[2]){row, col})))
+                {
+                    return true;
+                }
             }
         }
     }
@@ -91,14 +106,14 @@ int main(void)
     {
     char str[1024];
 
-    uint16_t windowedScreenWidth = N * 64;
-    uint16_t windowedScreenHeight = N * 64 + 32;
+    uint16_t windowedScreenWidth = A * 64;
+    uint16_t windowedScreenHeight = A * 64 + 32;
     uint16_t screenWidth = windowedScreenWidth;
     uint16_t screenHeight = windowedScreenHeight;
 
     uint8_t scene = SCENE_NEWGAME;
 
-    uint8_t board[N][N];
+    uint8_t board[A][A];
     uint8_t vcount[N];
     uint8_t lastpick[2] = {255, 255};
 
@@ -174,11 +189,18 @@ int main(void)
             {
                 memset(lastpick, 255, 2);
                 for (uint8_t v=0; v<N; v++) vcount[v] = 0;
-                for (uint8_t row=0; row<N; row++)
+                for (uint8_t row=0; row<A; row++)
                 {
-                    for (uint8_t col=0; col<N; col++)
+                    for (uint8_t col=0; col<A; col++)
                     {
-                        board[row][col] = 128;
+                        if (M <= row && row < A-M && M <= col && col < A-M)
+                        {
+                            board[row][col] = 0x80 + 0;
+                        }
+                        else
+                        {
+                            board[row][col] = 0x80 + 1;
+                        }
                     }
                 }
                 scene = SCENE_DRAWBOARD;
@@ -186,15 +208,16 @@ int main(void)
 
             case SCENE_DRAWBOARD:  // draw
             {
+                uint8_t fieldcount = N;
                 if (currentGesture == GESTURE_DRAG) mousedelta = GetGestureDragVector();
                 else mousedelta = GetMouseDelta();
                 bool running_mouse = mousedelta.x != (float)(0) || mousedelta.y != (float)(0);
                 if (running_mouse)
                 {
                     uint8_t v = __rdtsc() & 0x07; // random value
-                    if (v < N)
+                    if (v < fieldcount)
                     {
-                        board[uintvar[0] / N][uintvar[0] % N] = v;
+                        board[M + uintvar[0] / N][M + uintvar[0] % N] = v;
                         vcount[v]++;
                         if (uintvar[0] == N*N - 1)
                         {
@@ -204,14 +227,14 @@ int main(void)
                         else uintvar[0]++;
                     }
                 }
-                for (uint8_t row=0; row<N; row++)
+                for (uint8_t row=0; row<A; row++)
                 {
-                    for (uint8_t col=0; col<N; col++)
+                    for (uint8_t col=0; col<A; col++)
                     {
                         uint8_t v = board[row][col];
-                        if (v==128)
+                        if (0x80 <= v)
                         {
-                            DrawTexturePro(tiles, ((Rectangle){0, 0, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
                         }
                         else
                         {
@@ -220,20 +243,37 @@ int main(void)
                         }
                     }
                 }
-                DrawText("MOVE YOUR MOUSE", 10, 7 + 64 * N, 20, COLOR_FOREGROUND);
+                DrawText("MOVE YOUR MOUSE", 10, 7 + 64 * A, 20, COLOR_FOREGROUND);
             } break;
 
             case SCENE_GAME:
             {
-                for (uint8_t row=0; row<N; row++)
+                for (uint8_t row=0; row<A; row++)
                 {
-                    for (uint8_t col=0; col<N; col++)
+                    for (uint8_t col=0; col<A; col++)
                     {
                         uint8_t v = board[row][col];
                         uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
-                        if (lastpick[0] == row && lastpick[1] == col)
+                        if (0x80 <= v)
+                        {
+                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                        }
+                        else if (lastpick[0] == row && lastpick[1] == col)
                         {
                             DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, GRAY);
+
+                            // DEBUG ONLY
+                            {
+                                if (CheckCollisionPointRec(mouse, ((Rectangle){1 + 64 * col, 1 + 64 * row, 62, 62})))
+                                {
+                                    if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
+                                    {
+                                        transform(board, vcount, row, col);
+                                        lastpick[0] = row;
+                                        lastpick[1] = col;
+                                    }
+                                }
+                            }
                         }
                         else if (v == 0)
                         {
@@ -257,40 +297,47 @@ int main(void)
                 }
 
                 uint8_t steps;
-                bool equilibrium = vcount_in_equilibrium(vcount);
+                bool equilibrium = vcount_in_equilibrium(vcount, N);
                 if (equilibrium) scene = SCENE_WIN;
                 else
                 {
                     for (steps=1; steps <= MAXSIMSTEPS; steps++)
                     {
-                        equilibrium = simulate(&board, &vcount, steps, lastpick);
+                        equilibrium = simulate(board, vcount, steps, lastpick);
                         if (equilibrium)
                         {
                             sprintf(str, "EQUILIBRIUM IN %d", steps);
-                            DrawText(str, 10, 7 + 64 * N, 20, COLOR_FOREGROUND);
+                            DrawText(str, 10, 7 + 64 * A, 20, COLOR_FOREGROUND);
                             break;
                         };
                     }
                     if (!equilibrium)
                     {
                         sprintf(str, "EQUILIBRIUM OVER %d", MAXSIMSTEPS);
-                        DrawText(str, 10, 7 + 64 * N, 20, COLOR_FOREGROUND);
+                        DrawText(str, 10, 7 + 64 * A, 20, COLOR_FOREGROUND);
                     }
                 }
             } break;
 
             case SCENE_WIN:
             {
-                for (uint8_t row=0; row<N; row++)
+                for (uint8_t row=0; row<A; row++)
                 {
-                    for (uint8_t col=0; col<N; col++)
+                    for (uint8_t col=0; col<A; col++)
                     {
                         uint8_t v = board[row][col];
-                        uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
-                        DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                        if (0x80 <= v)
+                        {
+                            DrawTexturePro(tiles, ((Rectangle){(v - 0x80) * 64, 0, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                        }
+                        else
+                        {
+                            uint8_t i = (0 < vcount[v]) ? min(13, vcount[v] - 1) : 4;
+                            DrawTexturePro(tiles, ((Rectangle){i * 64, (1+v) * 64, 64, 64}), ((Rectangle){col * 64, row * 64, 64, 64}), ((Vector2){0, 0}), 0, WHITE);
+                        }
                     }
                 }
-                DrawText("CONGRATULATIONS!", 10, 7 + 64 * N, 20, COLOR_FOREGROUND);
+                DrawText("CONGRATULATIONS!", 10, 7 + 64 * A, 20, COLOR_FOREGROUND);
                 if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
                 {
                     scene = SCENE_NEWGAME;

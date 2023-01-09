@@ -1,7 +1,6 @@
 ﻿TODO
 ====
 
-1. Reload
 1. Help quickscreen
 1. Dummy tiles
     * Shore
@@ -9,6 +8,7 @@
     * Rock
     * Forest
 1. Tile same tiles for next round and game over condition
+1. Timer
 1. More levels / longer campaign
 1. Better end screen
 1. Title / Menu

@@ -1,47 +1,55 @@
+hortirata.c: In function 'ResetLevelCommands':
+hortirata.c:171:47: warning: passing argument 1 of 'MemFree' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  171 |         MemFree(levelcommands[levelcommandidx].attrs);
+      |                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^~~~~~
+In file included from hortirata.c:14:
+C:\raylib\raylib\src/raylib.h:1043:26: note: expected 'void *' but argument is of type 'const char *'
+ 1043 | RLAPI void MemFree(void *ptr);                                    // Internal memory free
+      |                    ~~~~~~^~~
 hortirata.c: In function 'load':
-hortirata.c:210:38: warning: pointer targets in passing argument 1 of 'TextFindNewlineIndex' differ in signedness [-Wpointer-sign]
-  210 |     int i = min(TextFindNewlineIndex(filedata, 0), MAXLEVELNAMESIZE - 1);
+hortirata.c:252:38: warning: pointer targets in passing argument 1 of 'TextFindNewlineIndex' differ in signedness [-Wpointer-sign]
+  252 |     int i = min(TextFindNewlineIndex(filedata, 0), MAXLEVELNAMESIZE - 1);
       |                                      ^~~~~~~~
       |                                      |
       |                                      unsigned char *
 hortirata.c:20:21: note: in definition of macro 'min'
    20 | #define min(a,b) (((a) < (b)) ? (a) : (b))
       |                     ^
-hortirata.c:163:38: note: expected 'const char *' but argument is of type 'unsigned char *'
-  163 | int TextFindNewlineIndex(const char *string, unsigned int startidx)
+hortirata.c:176:38: note: expected 'const char *' but argument is of type 'unsigned char *'
+  176 | int TextFindNewlineIndex(const char *string, unsigned int startidx)
       |                          ~~~~~~~~~~~~^~~~~~
-hortirata.c:210:38: warning: pointer targets in passing argument 1 of 'TextFindNewlineIndex' differ in signedness [-Wpointer-sign]
-  210 |     int i = min(TextFindNewlineIndex(filedata, 0), MAXLEVELNAMESIZE - 1);
+hortirata.c:252:38: warning: pointer targets in passing argument 1 of 'TextFindNewlineIndex' differ in signedness [-Wpointer-sign]
+  252 |     int i = min(TextFindNewlineIndex(filedata, 0), MAXLEVELNAMESIZE - 1);
       |                                      ^~~~~~~~
       |                                      |
       |                                      unsigned char *
 hortirata.c:20:34: note: in definition of macro 'min'
    20 | #define min(a,b) (((a) < (b)) ? (a) : (b))
       |                                  ^
-hortirata.c:163:38: note: expected 'const char *' but argument is of type 'unsigned char *'
-  163 | int TextFindNewlineIndex(const char *string, unsigned int startidx)
+hortirata.c:176:38: note: expected 'const char *' but argument is of type 'unsigned char *'
+  176 | int TextFindNewlineIndex(const char *string, unsigned int startidx)
       |                          ~~~~~~~~~~~~^~~~~~
-hortirata.c:216:33: warning: pointer targets in passing argument 1 of 'TextFindNonNewlineIndex' differ in signedness [-Wpointer-sign]
-  216 |     i = TextFindNonNewlineIndex(filedata, i);
+hortirata.c:258:33: warning: pointer targets in passing argument 1 of 'TextFindNonNewlineIndex' differ in signedness [-Wpointer-sign]
+  258 |     i = TextFindNonNewlineIndex(filedata, i);
       |                                 ^~~~~~~~
       |                                 |
       |                                 unsigned char *
-hortirata.c:184:41: note: expected 'const char *' but argument is of type 'unsigned char *'
-  184 | int TextFindNonNewlineIndex(const char *string, unsigned int startidx)
+hortirata.c:197:41: note: expected 'const char *' but argument is of type 'unsigned char *'
+  197 | int TextFindNonNewlineIndex(const char *string, unsigned int startidx)
       |                             ~~~~~~~~~~~~^~~~~~
-hortirata.c:278:33: warning: pointer targets in passing argument 1 of 'TextFindNonNewlineIndex' differ in signedness [-Wpointer-sign]
-  278 |     i = TextFindNonNewlineIndex(filedata, i);
+hortirata.c:320:33: warning: pointer targets in passing argument 1 of 'TextFindNonNewlineIndex' differ in signedness [-Wpointer-sign]
+  320 |     i = TextFindNonNewlineIndex(filedata, i);
       |                                 ^~~~~~~~
       |                                 |
       |                                 unsigned char *
-hortirata.c:184:41: note: expected 'const char *' but argument is of type 'unsigned char *'
-  184 | int TextFindNonNewlineIndex(const char *string, unsigned int startidx)
+hortirata.c:197:41: note: expected 'const char *' but argument is of type 'unsigned char *'
+  197 | int TextFindNonNewlineIndex(const char *string, unsigned int startidx)
       |                             ~~~~~~~~~~~~^~~~~~
-hortirata.c:281:38: warning: pointer targets in passing argument 1 of 'TextFindNewlineIndex' differ in signedness [-Wpointer-sign]
-  281 |         int j = TextFindNewlineIndex(filedata, i);
+hortirata.c:324:38: warning: pointer targets in passing argument 1 of 'TextFindNewlineIndex' differ in signedness [-Wpointer-sign]
+  324 |         int j = TextFindNewlineIndex(filedata, i);
       |                                      ^~~~~~~~
       |                                      |
       |                                      unsigned char *
-hortirata.c:163:38: note: expected 'const char *' but argument is of type 'unsigned char *'
-  163 | int TextFindNewlineIndex(const char *string, unsigned int startidx)
+hortirata.c:176:38: note: expected 'const char *' but argument is of type 'unsigned char *'
+  176 | int TextFindNewlineIndex(const char *string, unsigned int startidx)
       |                          ~~~~~~~~~~~~^~~~~~

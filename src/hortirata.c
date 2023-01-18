@@ -29,6 +29,8 @@
 #define COLOR_TITLE YELLOW
 
 #define MAXLEVELNAMESIZE 32
+#define MAXLEVELCOMAMNDCOUNT 255
+#define LEVELCOMAMNDPARAMAREASIZE 65535
 
 typedef struct __attribute__((__packed__, __scalar_storage_order__("big-endian"))) {
     uint8_t x;
@@ -114,6 +116,7 @@ unsigned ffs(int n)
 
 char levelname[MAXLEVELNAMESIZE];
 char str[1024];
+char levelcommandparamarea[LEVELCOMAMNDPARAMAREASIZE];
 int strwidth;
 uint32_t picks = 0;
 uint8_t board[BOARDROWS][BOARDCOLUMNS];
@@ -124,6 +127,8 @@ uint8_t gamefields = 0;
 uint8_t level = 0;
 uint8_t randomfields = 0;
 uint8_t scene = NoScene;
+LevelCommand levelcommands[MAXLEVELCOMAMNDCOUNT];
+int levelcommandidx = -1;
 
 Coord tileMap[255];
 int currentGesture = GESTURE_NONE;
@@ -159,6 +164,14 @@ Vector2 windowPos;
 === FUNCTIONS ==================================================================================================
 */
 
+void ResetLevelCommands()
+{
+    while (0 <= levelcommandidx)
+    {
+        MemFree(levelcommands[levelcommandidx].attrs);
+        levelcommandidx--;
+    }
+}
 
 int TextFindNewlineIndex(const char *string, unsigned int startidx)
 {
@@ -199,6 +212,35 @@ int TextFindNonNewlineIndex(const char *string, unsigned int startidx)
             default: return i;
         }
     }
+}
+
+
+bool load_levelcommand(const char *string, LevelCommand *levelcommand)
+{
+    char opstr[16];
+    uint16_t id = 65535;
+    uint8_t op = 0;
+    int i = TextFindIndex(string, " ");
+    if (i==-1) return false;
+    id = atoi(string);
+    i++;
+    int j = TextFindIndex(&string[i], " ");
+    if (j==-1) return false;
+    memcpy(opstr, &string[i], j);
+    opstr[j] = '\0';
+    if (strcmp(opstr, "MSG") == 0)
+    {
+        op = 1;
+    }   
+    else op = 0;
+    i += j + 1;
+    int length = strlen(&string[i]);
+    char *attrs = MemAlloc(length);
+    strcpy(attrs, &string[i]);
+    levelcommand->id = id;
+    levelcommand->op = op;
+    levelcommand->attrs = attrs;
+    return true;
 }
 
 
@@ -276,6 +318,7 @@ bool load(const char *fileName)
     if (0 == randomfields) scene = Playing;
     else scene = Draw;
     i = TextFindNonNewlineIndex(filedata, i);
+    ResetLevelCommands();
     while (i<filelength)
     {
         int j = TextFindNewlineIndex(filedata, i);
@@ -285,6 +328,11 @@ bool load(const char *fileName)
             memcpy(str, &filedata[i], j-i);
             str[j-i] = '\0';
             TraceLog(LOG_DEBUG, str);
+            bool success = load_levelcommand(str, &levelcommands[levelcommandidx+1]);
+            if (success) levelcommandidx++;
+            sprintf(str, "id=%d op=%d", levelcommands[levelcommandidx].id, levelcommands[levelcommandidx].op);
+            TraceLog(LOG_DEBUG, str);
+            TraceLog(LOG_DEBUG, levelcommands[levelcommandidx].attrs);
         }
         i = j+1;
     }
@@ -293,6 +341,9 @@ bool load(const char *fileName)
 
     return true;
 }
+
+
+
 
 
 bool load_level(uint8_t levelval)
@@ -731,6 +782,7 @@ int main(void)
 
     // De-Initialization
     //--------------------------------------------------------------------------------------
+    ResetLevelCommands();
     UnloadRenderTexture(screenTarget);
     UnloadTexture(backgroundTexture);
     UnloadTexture(tilesTexture);

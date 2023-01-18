@@ -28,17 +28,28 @@
 #define COLOR_FOREGROUND WHITE
 #define COLOR_TITLE YELLOW
 
+#define MAXLEVELNAMESIZE 32
+
+typedef struct __attribute__((__packed__, __scalar_storage_order__("big-endian"))) {
+    uint8_t x;
+    uint8_t y;
+} Coord;
+
 
 enum HortirataFieldType {
     LF = 0x0A,
     CR = 0x0D,
+    Cursor = 0x11,
     Grass = '0',
     Grain = '1',
     Lettuce = '2',
     Berry = '3',
     Seed = '4',
+    FarmStead = 'F',
     Arable = '_',
     Water = '~',
+    Sand = ':',
+    Oak = 'O',
 };
 
 enum HortirataScene {
@@ -95,6 +106,7 @@ unsigned ffs(int n)
 === GLOBAL VARIABLES ===========================================================================================
 */
 
+char levelname[MAXLEVELNAMESIZE];
 char str[1024];
 int strwidth;
 uint32_t picks = 0;
@@ -107,15 +119,16 @@ uint8_t level = 0;
 uint8_t randomfields = 0;
 uint8_t scene = NoScene;
 
+Coord tileMap[255];
 int currentGesture = GESTURE_NONE;
 int display = 0;
 int fps = 30;
 int lastGesture = GESTURE_NONE;
 Rectangle gameScreenDest;
-Rectangle textboxLevel = {112, 688, 96, 24};
+Rectangle textboxLevel = {112, 688, 216, 24};
 Rectangle textboxPicks = {1144, 688, 104, 24};
 Rectangle tileWinDest = {624, 684, 32, 32};
-Rectangle tileWinSource = {912, 16, 32, 32};
+Rectangle tileWinSource = {1168, 16, 32, 32};
 Texture2D backgroundTexture;
 Texture2D tilesTexture;
 uint16_t tileOriginX = 32;
@@ -129,7 +142,6 @@ uint32_t screenWidth = 0;
 uint8_t gameScreenScale;
 uint8_t tileActiveSize = 50;
 uint8_t tileDeficitAvailable = 9;
-uint8_t tileHoverX = 17;
 uint8_t tileSize = 64;
 uint8_t tileSurplusAvailable = 9;
 Vector2 mouse;
@@ -146,8 +158,16 @@ bool load(const char *fileName)
 {
     if (!FileExists(fileName)) return false;
     unsigned int filelength = GetFileLength(fileName);
-    if (filelength < BOARDROWS*BOARDCOLUMNS) return false;
     unsigned char* filedata = LoadFileData(fileName, &filelength);
+    int ridx = TextFindIndex(filedata, "\r");
+    int nidx = TextFindIndex(filedata, "\n");
+    if (ridx == -1 && nidx == -1) return false;
+    else if (ridx == -1) ridx = nidx;
+    else if (nidx == -1) nidx = ridx;
+    int newlineidx = min(min(ridx, nidx), MAXLEVELNAMESIZE - 1);
+    memcpy(levelname, filedata, newlineidx);
+    levelname[newlineidx] = '\0';
+    uint8_t i = max(ridx, nidx) + 1;
     picks = 0;
     eqpicks = eqpicksUnchecked;
     uint8_t row = 0;
@@ -155,7 +175,7 @@ bool load(const char *fileName)
     for (uint8_t v=0; v<FIELDTYPECOUNT; v++) fieldtypecounts[v] = 0;
     gamefields = 0;
     randomfields = 0;
-    for (uint8_t i=0; i<filelength; ++i)
+    while (i<filelength)
     {
         uint8_t c = filedata[i];
         switch (c)
@@ -193,10 +213,9 @@ bool load(const char *fileName)
                 }
                 randomfields++;
             } break;
-            case Water:
             default:
             {
-                board[row][col] = Water;
+                board[row][col] = c;
                 col++;
                 if (BOARDCOLUMNS <= col)
                 {
@@ -206,6 +225,7 @@ bool load(const char *fileName)
             } break;
         }
         if (BOARDROWS <= row) break;
+        i++;
     }
     fieldtypecounttarget = (gamefields + randomfields) / FIELDTYPECOUNT;
     UnloadFileData(filedata);
@@ -322,7 +342,6 @@ void draw_board()
         for (uint8_t col=0; col<BOARDCOLUMNS; col++)
         {
             uint8_t c = board[row][col];
-            uint8_t i = (0 < fieldtypecounts[c-Grass]) ? min(tileDeficitAvailable + tileSurplusAvailable, tileDeficitAvailable + fieldtypecounts[c-Grass] - fieldtypecounttarget) : tileDeficitAvailable;
             Rectangle source;
             Rectangle dest = {tileOriginX + col * tileSize, tileOriginY + row * tileSize, tileSize, tileSize};
             switch (c)
@@ -332,12 +351,12 @@ void draw_board()
                 case Lettuce:
                 case Berry:
                 case Seed:
-                    source = (Rectangle){i * tileSize, (1+c-Grass) * tileSize, tileSize, tileSize}; break;
-                case Arable:
-                    source = (Rectangle){0 * tileSize, 0, tileSize, tileSize}; break;
-                case Water:
+                    {
+                        int8_t m = max(min(tileSurplusAvailable, (fieldtypecounts[c-Grass] - fieldtypecounttarget)), -tileDeficitAvailable);
+                        source = (Rectangle){(tileMap[c].y + m) * tileSize, tileMap[c].x * tileSize, tileSize, tileSize}; break;
+                    } break;
                 default:
-                    source = (Rectangle){1 * tileSize, 0, tileSize, tileSize}; break;
+                    source = (Rectangle){tileMap[c].y * tileSize, tileMap[c].x * tileSize, tileSize, tileSize};
             }
             DrawTexturePro(tilesTexture, source, dest, ((Vector2){0, 0}), 0, WHITE);
         }
@@ -348,8 +367,8 @@ void draw_board()
 void draw_info()
 {
     sprintf(str, "%d", level);
-    strwidth = MeasureText(str, 20);
-    DrawText(str, textboxLevel.x + (textboxLevel.width - strwidth)/2, textboxLevel.y + ((textboxLevel.height - 14)/2) - 2, 20, COLOR_BACKGROUND);
+    strwidth = MeasureText(levelname, 20);
+    DrawText(levelname, textboxLevel.x + (textboxLevel.width - strwidth)/2, textboxLevel.y + ((textboxLevel.height - 14)/2) - 2, 20, COLOR_BACKGROUND);
     sprintf(str, "%d", picks);
     strwidth = MeasureText(str, 20);
     DrawText(str, textboxPicks.x + (textboxPicks.width - strwidth)/2, textboxPicks.y + ((textboxPicks.height - 14)/2) - 2, 20, COLOR_BACKGROUND);
@@ -379,7 +398,19 @@ void draw_info()
 
 int main(void)
     {
-    //SetTraceLogLevel(LOG_DEBUG);
+    SetTraceLogLevel(LOG_DEBUG);
+
+    tileMap[Arable] = (Coord){0, 0};
+    tileMap[Water] = (Coord){0, 1};
+    tileMap[FarmStead] = (Coord){0, 2};
+    tileMap[Cursor] = (Coord){0, 17};
+    tileMap[Grass] = (Coord){1, 9};
+    tileMap[Grain] = (Coord){2, 9};
+    tileMap[Lettuce] = (Coord){3, 9};
+    tileMap[Berry] = (Coord){4, 9};
+    tileMap[Seed] = (Coord){5, 9};
+    tileMap[Sand] = (Coord){0, 3};
+    tileMap[Oak] = (Coord){0, 4};
 
     load_level(1);
 
@@ -532,6 +563,7 @@ int main(void)
                     if (0 == randomfields) scene = Playing;
                 }
                 draw_board();
+                draw_info();
             } break;
 
             case Playing:
@@ -576,8 +608,9 @@ int main(void)
                 draw_info();
                 if (validloc && (currentGesture == GESTURE_NONE || currentGesture == GESTURE_DRAG))
                 {
+                    Rectangle source = (Rectangle){tileMap[Cursor].y * tileSize, tileMap[Cursor].x * tileSize, tileSize, tileSize};
                     Rectangle dest = {tileOriginX + col * tileSize, tileOriginY + row * tileSize, tileSize, tileSize};
-                    DrawTexturePro(tilesTexture, ((Rectangle){tileHoverX * tileSize, 0, tileSize, tileSize}), dest, ((Vector2){0, 0}), 0, WHITE);
+                    DrawTexturePro(tilesTexture, source, dest, ((Vector2){0, 0}), 0, WHITE);
                 }
             } break;
 

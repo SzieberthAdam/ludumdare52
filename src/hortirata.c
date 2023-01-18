@@ -40,7 +40,7 @@ typedef struct __attribute__((__packed__, __scalar_storage_order__("big-endian")
 typedef struct {
     uint16_t id;
     uint8_t op;
-    const char *attrs;
+    char *attrs;
 } LevelCommand;
 
 
@@ -129,6 +129,7 @@ uint8_t randomfields = 0;
 uint8_t scene = NoScene;
 LevelCommand levelcommands[MAXLEVELCOMAMNDCOUNT];
 int levelcommandidx = -1;
+uint16_t levelcommandid = 65535;
 
 Coord tileMap[255];
 int currentGesture = GESTURE_NONE;
@@ -163,6 +164,22 @@ Vector2 windowPos;
 /*
 === FUNCTIONS ==================================================================================================
 */
+
+
+Coord CoordFromText(const char *string)
+{
+    Coord c = {0, 0};
+    char ch = string[0];
+    if ('A' <= ch && ch <= 'S') c.y = ch - 'A';
+    ch = string[1];
+    if ('1' <= ch && ch <= '9') c.x = ch - '1';
+    return c;
+}
+
+Rectangle GameScreenRectFromBoardCoord(Coord c)
+{
+    return (Rectangle){tileOriginX + c.y * tileSize, tileOriginY + c.x * tileSize, tileSize, tileSize};
+}
 
 void ResetLevelCommands()
 {
@@ -249,13 +266,13 @@ bool load(const char *fileName)
     if (!FileExists(fileName)) return false;
     unsigned int filelength = GetFileLength(fileName);
     unsigned char* filedata = LoadFileData(fileName, &filelength);
-    int i = min(TextFindNewlineIndex(filedata, 0), MAXLEVELNAMESIZE - 1);
+    int i = min(TextFindNewlineIndex((char *)filedata, 0), MAXLEVELNAMESIZE - 1);
     if (i == -1) return false;
     memcpy(levelname, filedata, i);
     levelname[i] = '\0';
     // i++;
     // if (TextFindNewlineIndex(filedata, i) == i + 1) i++;
-    i = TextFindNonNewlineIndex(filedata, i);
+    i = TextFindNonNewlineIndex((char *)filedata, i);
     picks = 0;
     eqpicks = eqpicksUnchecked;
     uint8_t row = 0;
@@ -317,25 +334,23 @@ bool load(const char *fileName)
     }
     if (0 == randomfields) scene = Playing;
     else scene = Draw;
-    i = TextFindNonNewlineIndex(filedata, i);
+    i = TextFindNonNewlineIndex((char *)filedata, i);
     ResetLevelCommands();
     while (i<filelength)
     {
-        int j = TextFindNewlineIndex(filedata, i);
+        int j = TextFindNewlineIndex((char *)filedata, i);
         if (j==-1) j = filelength;
         if (i < j)
         {
             memcpy(str, &filedata[i], j-i);
             str[j-i] = '\0';
-            TraceLog(LOG_DEBUG, str);
             bool success = load_levelcommand(str, &levelcommands[levelcommandidx+1]);
             if (success) levelcommandidx++;
             sprintf(str, "id=%d op=%d", levelcommands[levelcommandidx].id, levelcommands[levelcommandidx].op);
-            TraceLog(LOG_DEBUG, str);
-            TraceLog(LOG_DEBUG, levelcommands[levelcommandidx].attrs);
         }
         i = j+1;
     }
+    if (0 <= levelcommandidx) levelcommandid = levelcommands[0].id;
     fieldtypecounttarget = (gamefields + randomfields) / FIELDTYPECOUNT;
     UnloadFileData(filedata);
 
@@ -506,6 +521,41 @@ void draw_info()
         } break;
     }
 }
+
+
+void handle_levelcommands()
+{
+    if (levelcommandidx == -1) return;
+    if (levelcommandid == 65535) return;
+    int i = 0;
+    for (i = 0; i <= levelcommandidx; ++i)
+    {
+        if (levelcommands[i].id == levelcommandid) break;
+    }
+    while (i <= levelcommandidx)
+    {
+        switch (levelcommands[i].op)
+        {
+            case 1:
+            {
+                //DrawText(levelcommands[i].attrs, 10, 10, 30, WHITE);
+                Coord c0 = CoordFromText(levelcommands[i].attrs);
+                int j = TextFindIndex(levelcommands[i].attrs, " ") + 1;
+                Coord c1 = CoordFromText(&levelcommands[i].attrs[j]);
+                Rectangle r0 = GameScreenRectFromBoardCoord(c0);
+                Rectangle r1 = GameScreenRectFromBoardCoord(c1);
+                Rectangle r = (Rectangle){r0.x, r0.y, r1.x-r0.x+r1.width, r1.y-r0.y+r1.height};
+                DrawRectangleRec(r, BLACK);       
+                j += TextFindIndex(&levelcommands[i].attrs[j], " ") + 1;
+                strwidth = MeasureText(&levelcommands[i].attrs[j], 20);
+                DrawText(&levelcommands[i].attrs[j], r.x + (r.width - strwidth)/2, r.y + ((r.height - 14)/2) - 2, 20, WHITE);
+                i++;
+            } break;
+        }
+        
+    }
+}
+
 
 int main(void)
     {
@@ -717,10 +767,11 @@ int main(void)
                 }
                 draw_board();
                 draw_info();
+                handle_levelcommands();
                 if (validloc && (currentGesture == GESTURE_NONE || currentGesture == GESTURE_DRAG))
                 {
                     Rectangle source = (Rectangle){tileMap[Cursor].y * tileSize, tileMap[Cursor].x * tileSize, tileSize, tileSize};
-                    Rectangle dest = {tileOriginX + col * tileSize, tileOriginY + row * tileSize, tileSize, tileSize};
+                    Rectangle dest = GameScreenRectFromBoardCoord((Coord){row, col});
                     DrawTexturePro(tilesTexture, source, dest, ((Vector2){0, 0}), 0, WHITE);
                 }
             } break;

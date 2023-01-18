@@ -35,6 +35,12 @@ typedef struct __attribute__((__packed__, __scalar_storage_order__("big-endian")
     uint8_t y;
 } Coord;
 
+typedef struct {
+    uint16_t id;
+    uint8_t op;
+    const char *attrs;
+} LevelCommand;
+
 
 enum HortirataFieldType {
     LF = 0x0A,
@@ -154,20 +160,60 @@ Vector2 windowPos;
 */
 
 
+int TextFindNewlineIndex(const char *string, unsigned int startidx)
+{
+    uint8_t c;
+    unsigned int i = startidx;
+    do
+    {
+        c = string[i];
+        switch (c)
+        {
+            case LF:
+            case CR:
+            {
+                return i;
+            }
+        }
+        i++;
+    }
+    while (0 < c);
+    return -1;
+}
+
+int TextFindNonNewlineIndex(const char *string, unsigned int startidx)
+{
+    uint8_t c = 0;
+    unsigned int i = startidx;
+    while (true)
+    {
+        c = string[i];
+        switch (c)
+        {
+            case 0: return -1;
+            case LF:
+            case CR:
+            {
+                i++;
+            } break;
+            default: return i;
+        }
+    }
+}
+
+
 bool load(const char *fileName)
 {
     if (!FileExists(fileName)) return false;
     unsigned int filelength = GetFileLength(fileName);
     unsigned char* filedata = LoadFileData(fileName, &filelength);
-    int ridx = TextFindIndex(filedata, "\r");
-    int nidx = TextFindIndex(filedata, "\n");
-    if (ridx == -1 && nidx == -1) return false;
-    else if (ridx == -1) ridx = nidx;
-    else if (nidx == -1) nidx = ridx;
-    int newlineidx = min(min(ridx, nidx), MAXLEVELNAMESIZE - 1);
-    memcpy(levelname, filedata, newlineidx);
-    levelname[newlineidx] = '\0';
-    uint8_t i = max(ridx, nidx) + 1;
+    int i = min(TextFindNewlineIndex(filedata, 0), MAXLEVELNAMESIZE - 1);
+    if (i == -1) return false;
+    memcpy(levelname, filedata, i);
+    levelname[i] = '\0';
+    // i++;
+    // if (TextFindNewlineIndex(filedata, i) == i + 1) i++;
+    i = TextFindNonNewlineIndex(filedata, i);
     picks = 0;
     eqpicks = eqpicksUnchecked;
     uint8_t row = 0;
@@ -224,13 +270,27 @@ bool load(const char *fileName)
                 }
             } break;
         }
-        if (BOARDROWS <= row) break;
         i++;
+        if (BOARDROWS <= row) break;
+    }
+    if (0 == randomfields) scene = Playing;
+    else scene = Draw;
+    i = TextFindNonNewlineIndex(filedata, i);
+    while (i<filelength)
+    {
+        int j = TextFindNewlineIndex(filedata, i);
+        if (j==-1) j = filelength;
+        if (i < j)
+        {
+            memcpy(str, &filedata[i], j-i);
+            str[j-i] = '\0';
+            TraceLog(LOG_DEBUG, str);
+        }
+        i = j+1;
     }
     fieldtypecounttarget = (gamefields + randomfields) / FIELDTYPECOUNT;
     UnloadFileData(filedata);
-    if (0 == randomfields) scene = Playing;
-    else scene = Draw;
+
     return true;
 }
 

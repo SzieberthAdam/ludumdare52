@@ -1,0 +1,7 @@
+hortirata.c: In function 'load_levelcommand':
+hortirata.c:260:14: warning: writing 1 byte into a region of size 0 [-Wstringop-overflow=]
+  260 |     opstr[j] = '\0';
+      |     ~~~~~~~~~^~~~~~
+hortirata.c:250:10: note: at offset -1 into destination object 'opstr' of size 16
+  250 |     char opstr[16];
+      |          ^~~~~

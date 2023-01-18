@@ -65,14 +65,23 @@ enum HortirataScene {
     Draw = 1,
     Playing = 11,
     Win = 21,
-    Thanks = 22
+    Thanks = 22,
 };
 
 enum eqpicksSpecialValue {
     eqpicksWin = 0,
     eqpicksMaxCalculate = 3, // IMPORTANT
     eqpicksTooHighToCalculate = 254,
-    eqpicksUnchecked = 255
+    eqpicksUnchecked = 255,
+};
+
+enum LevelCommandOp {
+    NOOP = 0x00,
+    CLR = 0x01,
+    MSG = 0x02,
+    CEND = 0x80,
+    CGOTO = 0x81,
+    END = 0xFFFF,
 };
 
 
@@ -129,7 +138,7 @@ uint8_t randomfields = 0;
 uint8_t scene = NoScene;
 LevelCommand levelcommands[MAXLEVELCOMAMNDCOUNT];
 int levelcommandidx = -1;
-uint16_t levelcommandid = 65535;
+uint16_t levelcommandid = END;
 
 Coord tileMap[255];
 int currentGesture = GESTURE_NONE;
@@ -185,7 +194,11 @@ void ResetLevelCommands()
 {
     while (0 <= levelcommandidx)
     {
-        MemFree(levelcommands[levelcommandidx].attrs);
+        switch (levelcommands[levelcommandidx].op)
+        {
+            case CEND: break;
+            default: MemFree(levelcommands[levelcommandidx].attrs);
+        }
         levelcommandidx--;
     }
 }
@@ -235,28 +248,31 @@ int TextFindNonNewlineIndex(const char *string, unsigned int startidx)
 bool load_levelcommand(const char *string, LevelCommand *levelcommand)
 {
     char opstr[16];
-    uint16_t id = 65535;
+    uint16_t id = END;
     uint8_t op = 0;
     int i = TextFindIndex(string, " ");
     if (i==-1) return false;
     id = atoi(string);
     i++;
     int j = TextFindIndex(&string[i], " ");
-    if (j==-1) return false;
-    memcpy(opstr, &string[i], j);
+    if (j==-1) strcpy(opstr, &string[i]);
+    else memcpy(opstr, &string[i], j);
     opstr[j] = '\0';
-    if (strcmp(opstr, "MSG") == 0)
-    {
-        op = 1;
-    }   
-    else op = 0;
-    i += j + 1;
-    int length = strlen(&string[i]);
-    char *attrs = MemAlloc(length);
-    strcpy(attrs, &string[i]);
+    if (strcmp(opstr, "CLR") == 0) op = CLR;
+    else if (strcmp(opstr, "MSG") == 0) op = MSG;
+    else if (strcmp(opstr, "CEND") == 0) op = CEND;
+    else if (strcmp(opstr, "CGOTO") == 0) op = CGOTO;
+    else op = NOOP;
     levelcommand->id = id;
     levelcommand->op = op;
-    levelcommand->attrs = attrs;
+    if (j!=-1)
+    {
+        i += j + 1;
+        int length = strlen(&string[i]);
+        char *attrs = MemAlloc(length);
+        strcpy(attrs, &string[i]);
+        levelcommand->attrs = attrs;
+    }
     return true;
 }
 
@@ -525,8 +541,9 @@ void draw_info()
 
 void handle_levelcommands()
 {
+    uint16_t id;
     if (levelcommandidx == -1) return;
-    if (levelcommandid == 65535) return;
+    if (levelcommandid == END) return;
     int i = 0;
     for (i = 0; i <= levelcommandidx; ++i)
     {
@@ -536,23 +553,52 @@ void handle_levelcommands()
     {
         switch (levelcommands[i].op)
         {
-            case 1:
+            case CLR:
             {
-                //DrawText(levelcommands[i].attrs, 10, 10, 30, WHITE);
                 Coord c0 = CoordFromText(levelcommands[i].attrs);
                 int j = TextFindIndex(levelcommands[i].attrs, " ") + 1;
                 Coord c1 = CoordFromText(&levelcommands[i].attrs[j]);
                 Rectangle r0 = GameScreenRectFromBoardCoord(c0);
                 Rectangle r1 = GameScreenRectFromBoardCoord(c1);
                 Rectangle r = (Rectangle){r0.x, r0.y, r1.x-r0.x+r1.width, r1.y-r0.y+r1.height};
-                DrawRectangleRec(r, BLACK);       
+                DrawRectangleRec(r, BLACK);
+                i++;
+            } break;
+            case MSG:
+            {
+                Coord c0 = CoordFromText(levelcommands[i].attrs);
+                int j = TextFindIndex(levelcommands[i].attrs, " ") + 1;
+                Coord c1 = CoordFromText(&levelcommands[i].attrs[j]);
+                Rectangle r0 = GameScreenRectFromBoardCoord(c0);
+                Rectangle r1 = GameScreenRectFromBoardCoord(c1);
+                Rectangle r = (Rectangle){r0.x, r0.y, r1.x-r0.x+r1.width, r1.y-r0.y+r1.height};
+                DrawRectangleRec(r, BLACK);
                 j += TextFindIndex(&levelcommands[i].attrs[j], " ") + 1;
                 strwidth = MeasureText(&levelcommands[i].attrs[j], 20);
                 DrawText(&levelcommands[i].attrs[j], r.x + (r.width - strwidth)/2, r.y + ((r.height - 14)/2) - 2, 20, WHITE);
                 i++;
             } break;
+            case CEND:
+            {
+                if (currentGesture != lastGesture && currentGesture == GESTURE_TAP) levelcommandid = END;
+                i = levelcommandidx + 1; // break from outer while loop
+            } break;
+            case CGOTO:
+            {
+                if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
+                {
+                    levelcommandid = atoi(levelcommands[i].attrs);
+                    i = levelcommandidx + 1;  // break from outer while loop
+                }
+                else
+                {
+                    int j = TextFindIndex(levelcommands[i].attrs, " ") + 1;
+                    id = atoi(&levelcommands[i].attrs[j]);
+                    if (0 < id) levelcommandid = id;
+                    else i = levelcommandidx + 1; // break from outer while loop
+                }
+            } break;
         }
-        
     }
 }
 
@@ -780,10 +826,14 @@ int main(void)
             {
                 draw_board();
                 draw_info();
+                handle_levelcommands();
                 if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
                 {
-                    bool success = load_level(level+1);
-                    if (!success) scene = Thanks;
+                    if (levelcommandid == END)
+                    {
+                        bool success = load_level(level+1);
+                        if (!success) scene = Thanks;
+                    }
                 }
             } break;
 

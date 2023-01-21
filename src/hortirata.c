@@ -128,6 +128,7 @@ unsigned ffs(int n)
 */
 
 char levelname[MAXLEVELNAMESIZE];
+char levelcommandstr[256];
 char str[1024];
 char levelcommandparamarea[LEVELCOMAMNDPARAMAREASIZE];
 int strwidth;
@@ -196,11 +197,17 @@ Rectangle GameScreenRectFromBoardCoord(Coord c)
 
 void ResetLevelCommands()
 {
+    sprintf(str, "ResetLevelCommands() %d", levelcommandidx);
+    TraceLog(LOG_DEBUG, str);
     while (0 <= levelcommandidx)
     {
+        sprintf(str, "R %d %d %d %p", levelcommandidx, levelcommands[levelcommandidx].id, levelcommands[levelcommandidx].op, levelcommands[levelcommandidx].attrs);
+        TraceLog(LOG_DEBUG, str);
         switch (levelcommands[levelcommandidx].op)
         {
+            case SETWINSCENE: break;
             case CEND: break;
+            case DONE: break;
             default: MemFree(levelcommands[levelcommandidx].attrs);
         }
         levelcommandidx--;
@@ -251,6 +258,7 @@ int TextFindNonNewlineIndex(const char *string, unsigned int startidx)
 
 bool load_levelcommand(const char *string, LevelCommand *levelcommand)
 {
+    //TraceLog(LOG_DEBUG, string);
     char opstr[16];
     uint16_t id = END;
     uint8_t op = 0;
@@ -259,9 +267,16 @@ bool load_levelcommand(const char *string, LevelCommand *levelcommand)
     id = atoi(string);
     i++;
     int j = TextFindIndex(&string[i], " ");
-    if (j==-1) strcpy(opstr, &string[i]);
-    else memcpy(opstr, &string[i], j);
-    opstr[j] = '\0';
+    if (j==-1)
+    {
+        strcpy(opstr, &string[i]);
+    }
+    else
+    {
+        memcpy(opstr, &string[i], j);
+        opstr[j] = '\0';
+    }
+    //TraceLog(LOG_DEBUG, opstr);
     if (strcmp(opstr, "DONE") == 0) op = DONE;
     else if (strcmp(opstr, "MSG") == 0) op = MSG;
     else if (strcmp(opstr, "CLR") == 0) op = CLR;
@@ -273,14 +288,24 @@ bool load_levelcommand(const char *string, LevelCommand *levelcommand)
     else op = NOOP;
     levelcommand->id = id;
     levelcommand->op = op;
+    //TraceLog(LOG_DEBUG, "hello1");
     if (j!=-1)
     {
         i += j + 1;
-        int length = strlen(&string[i]);
+        int length = strlen(&string[i]) + 1;  // null character at the end
+        //sprintf(str, "%d %d %d, %d %d %d", levelcommandidx, levelcommand->id, levelcommand->op, j, i, length);
+        //TraceLog(LOG_DEBUG, str);
+        //TraceLog(LOG_DEBUG, levelcommandstr);
+        //TraceLog(LOG_DEBUG, string);
         char *attrs = MemAlloc(length);
+        sprintf(str, "A %d %d %d %d %p", levelcommandidx, levelcommand->id, levelcommand->op, length, attrs);
+        TraceLog(LOG_DEBUG, str);
+        //TraceLog(LOG_DEBUG, "hello2");
         strcpy(attrs, &string[i]);
+        //TraceLog(LOG_DEBUG, "hello3");
         levelcommand->attrs = attrs;
     }
+    //TraceLog(LOG_DEBUG, "hello4");
     return true;
 }
 
@@ -366,11 +391,12 @@ bool load(const char *fileName)
         if (j==-1) j = filelength;
         if (i < j)
         {
-            memcpy(str, &filedata[i], j-i);
-            str[j-i] = '\0';
-            bool success = load_levelcommand(str, &levelcommands[levelcommandidx+1]);
-            if (success) levelcommandidx++;
-            sprintf(str, "id=%d op=%d", levelcommands[levelcommandidx].id, levelcommands[levelcommandidx].op);
+            memcpy(levelcommandstr, &filedata[i], j-i);
+            levelcommandstr[j-i] = '\0';
+            levelcommandidx++;
+            bool success = load_levelcommand(levelcommandstr, &levelcommands[levelcommandidx]);
+            if (!success) levelcommandidx--;
+            //sprintf(str, "id=%d op=%d", levelcommands[levelcommandidx].id, levelcommands[levelcommandidx].op);
         }
         i = j+1;
     }
@@ -558,7 +584,6 @@ void draw_info()
 
 void handle_levelcommands()
 {
-    uint16_t id;
     if (levelcommandidx == -1) return;
     if (levelcommandid == END) return;
     int i = 0;
@@ -911,11 +936,14 @@ int main(void)
 
     // De-Initialization
     //--------------------------------------------------------------------------------------
+    TraceLog(LOG_DEBUG, "de1");
     ResetLevelCommands();
+    TraceLog(LOG_DEBUG, "de2");
     UnloadRenderTexture(screenTarget);
     UnloadTexture(backgroundTexture);
     UnloadTexture(tilesTexture);
     CloseWindow();        // Close window and OpenGL context
+    TraceLog(LOG_DEBUG, "deend");
     //--------------------------------------------------------------------------------------
 
     return 0;

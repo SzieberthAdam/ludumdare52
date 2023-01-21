@@ -1,7 +1,11 @@
+hortirata.c: In function 'handle_levelcommands':
+hortirata.c:561:14: warning: unused variable 'id' [-Wunused-variable]
+  561 |     uint16_t id;
+      |              ^~
 hortirata.c: In function 'load_levelcommand':
-hortirata.c:260:14: warning: writing 1 byte into a region of size 0 [-Wstringop-overflow=]
-  260 |     opstr[j] = '\0';
+hortirata.c:264:14: warning: writing 1 byte into a region of size 0 [-Wstringop-overflow=]
+  264 |     opstr[j] = '\0';
       |     ~~~~~~~~~^~~~~~
-hortirata.c:250:10: note: at offset -1 into destination object 'opstr' of size 16
-  250 |     char opstr[16];
+hortirata.c:254:10: note: at offset -1 into destination object 'opstr' of size 16
+  254 |     char opstr[16];
       |          ^~~~~

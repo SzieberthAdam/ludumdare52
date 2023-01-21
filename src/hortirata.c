@@ -79,9 +79,13 @@ enum LevelCommandOp {
     NOOP = 0x00,
     CLR = 0x01,
     MSG = 0x02,
+    SETPLAYINGSCENE = 0x55,
+    SETWINSCENE = 0x5F,
     CEND = 0x80,
     CGOTO = 0x81,
-    END = 0xFFFF,
+    DRAWCURSOR = 0xDC,
+    DONE = 0xFD,
+    END = 0xFF,
 };
 
 
@@ -149,7 +153,7 @@ Rectangle gameScreenDest;
 Rectangle textboxLevel = {112, 688, 216, 24};
 Rectangle textboxPicks = {1144, 688, 104, 24};
 Rectangle tileWinDest = {624, 684, 32, 32};
-Rectangle tileWinSource = {1168, 16, 32, 32};
+Rectangle tileWinSource = {976, 16, 32, 32};
 Texture2D backgroundTexture;
 Texture2D tilesTexture;
 uint16_t tileOriginX = 32;
@@ -258,10 +262,14 @@ bool load_levelcommand(const char *string, LevelCommand *levelcommand)
     if (j==-1) strcpy(opstr, &string[i]);
     else memcpy(opstr, &string[i], j);
     opstr[j] = '\0';
-    if (strcmp(opstr, "CLR") == 0) op = CLR;
+    if (strcmp(opstr, "DONE") == 0) op = DONE;
     else if (strcmp(opstr, "MSG") == 0) op = MSG;
-    else if (strcmp(opstr, "CEND") == 0) op = CEND;
+    else if (strcmp(opstr, "CLR") == 0) op = CLR;
     else if (strcmp(opstr, "CGOTO") == 0) op = CGOTO;
+    else if (strcmp(opstr, "CEND") == 0) op = CEND;
+    else if (strcmp(opstr, "DRAWCURSOR") == 0) op = DRAWCURSOR;
+    else if (strcmp(opstr, "PLAYING") == 0) op = SETPLAYINGSCENE;
+    else if (strcmp(opstr, "WIN") == 0) op = SETWINSCENE;
     else op = NOOP;
     levelcommand->id = id;
     levelcommand->op = op;
@@ -367,6 +375,7 @@ bool load(const char *fileName)
         i = j+1;
     }
     if (0 <= levelcommandidx) levelcommandid = levelcommands[0].id;
+    else levelcommandid = END;
     fieldtypecounttarget = (gamefields + randomfields) / FIELDTYPECOUNT;
     UnloadFileData(filedata);
 
@@ -476,6 +485,14 @@ bool simulate(uint8_t board[BOARDROWS][BOARDCOLUMNS], uint8_t fieldtypecounts[FI
 }
 
 
+void draw_cursor(Coord c, int cursornr)
+{
+    Rectangle source = (Rectangle){(tileMap[Cursor].y - 1 + cursornr) * tileSize, tileMap[Cursor].x * tileSize, tileSize, tileSize};
+    Rectangle dest = GameScreenRectFromBoardCoord(c);
+    DrawTexturePro(tilesTexture, source, dest, ((Vector2){0, 0}), 0, WHITE);
+}
+
+
 void draw_board()
 {
     DrawTexture(backgroundTexture, 0, 0, WHITE);
@@ -553,6 +570,7 @@ void handle_levelcommands()
     {
         switch (levelcommands[i].op)
         {
+            case DONE: return;
             case CLR:
             {
                 Coord c0 = CoordFromText(levelcommands[i].attrs);
@@ -581,22 +599,37 @@ void handle_levelcommands()
             case CEND:
             {
                 if (currentGesture != lastGesture && currentGesture == GESTURE_TAP) levelcommandid = END;
-                i = levelcommandidx + 1; // break from outer while loop
+                return;
             } break;
             case CGOTO:
             {
                 if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
                 {
                     levelcommandid = atoi(levelcommands[i].attrs);
-                    i = levelcommandidx + 1;  // break from outer while loop
+                    return;
                 }
-                else
-                {
-                    int j = TextFindIndex(levelcommands[i].attrs, " ") + 1;
-                    id = atoi(&levelcommands[i].attrs[j]);
-                    if (0 < id) levelcommandid = id;
-                    else i = levelcommandidx + 1; // break from outer while loop
-                }
+                i++;
+            } break;
+            case DRAWCURSOR:
+            {
+                Coord c = CoordFromText(levelcommands[i].attrs);
+                int j = TextFindIndex(levelcommands[i].attrs, " ") + 1;
+                int cursornr = max(1, atoi(&levelcommands[i].attrs[j]));
+                draw_cursor(c, cursornr);
+                i++;
+            } break;
+            case SETPLAYINGSCENE:
+            {
+                scene = Playing;
+                i++;
+            } break;
+            case SETWINSCENE:
+            {
+                //scene = Win;
+                levelcommandid = END;
+                bool success = load_level(level+1);
+                if (!success) scene = Thanks;
+                return;
             } break;
         }
     }
@@ -610,7 +643,7 @@ int main(void)
     tileMap[Arable] = (Coord){0, 0};
     tileMap[Water] = (Coord){0, 1};
     tileMap[FarmStead] = (Coord){0, 2};
-    tileMap[Cursor] = (Coord){0, 17};
+    tileMap[Cursor] = (Coord){0, 13};
     tileMap[Grass] = (Coord){1, 9};
     tileMap[Grain] = (Coord){2, 9};
     tileMap[Lettuce] = (Coord){3, 9};
@@ -814,12 +847,7 @@ int main(void)
                 draw_board();
                 draw_info();
                 handle_levelcommands();
-                if (validloc && (currentGesture == GESTURE_NONE || currentGesture == GESTURE_DRAG))
-                {
-                    Rectangle source = (Rectangle){tileMap[Cursor].y * tileSize, tileMap[Cursor].x * tileSize, tileSize, tileSize};
-                    Rectangle dest = GameScreenRectFromBoardCoord((Coord){row, col});
-                    DrawTexturePro(tilesTexture, source, dest, ((Vector2){0, 0}), 0, WHITE);
-                }
+                if (validloc && (currentGesture == GESTURE_NONE || currentGesture == GESTURE_DRAG)) draw_cursor((Coord){row, col}, 1);
             } break;
 
             case Win:

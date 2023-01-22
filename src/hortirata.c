@@ -30,11 +30,12 @@
 
 #define MAXLEVELNAMESIZE 32
 #define MAXLEVELCOMAMNDCOUNT 255
+#define LEVELCOMMANDENDID 65535
 #define LEVELCOMAMNDPARAMAREASIZE 65535
 
 typedef struct __attribute__((__packed__, __scalar_storage_order__("big-endian"))) {
-    uint8_t x;
-    uint8_t y;
+    int8_t x;
+    int8_t y;
 } Coord;
 
 typedef struct {
@@ -83,9 +84,15 @@ enum LevelCommandOp {
     SETWINSCENE = 0x5F,
     CEND = 0x80,
     CGOTO = 0x81,
+    PGOTO = 0x82,
+    UNWINABLE = 0xC0,
+    WINABLE = 0xC1,
+    UNCLICKABLE = 0xCB,
+    CLICKABLE = 0xCC,
     DRAWCURSOR = 0xDC,
     DONE = 0xFD,
-    END = 0xFF,
+    END = 0xFE,
+    WIN = 0xFF,
 };
 
 
@@ -127,11 +134,16 @@ unsigned ffs(int n)
 === GLOBAL VARIABLES ===========================================================================================
 */
 
-char levelname[MAXLEVELNAMESIZE];
-char levelcommandstr[256];
-char str[1024];
+bool clickable = true;
+bool winable = true;
 char levelcommandparamarea[LEVELCOMAMNDPARAMAREASIZE];
+char levelcommandstr[256];
+char levelname[MAXLEVELNAMESIZE];
+char str[1024];
+int levelcommandidx = -1;
 int strwidth;
+LevelCommand levelcommands[MAXLEVELCOMAMNDCOUNT];
+uint16_t levelcommandid = LEVELCOMMANDENDID;
 uint32_t picks = 0;
 uint8_t board[BOARDROWS][BOARDCOLUMNS];
 uint8_t eqpicks = 0;
@@ -141,9 +153,6 @@ uint8_t gamefields = 0;
 uint8_t level = 0;
 uint8_t randomfields = 0;
 uint8_t scene = NoScene;
-LevelCommand levelcommands[MAXLEVELCOMAMNDCOUNT];
-int levelcommandidx = -1;
-uint16_t levelcommandid = END;
 
 Coord tileMap[255];
 int currentGesture = GESTURE_NONE;
@@ -180,19 +189,41 @@ Vector2 windowPos;
 */
 
 
+Coord GetMouseBoardCoord(void)
+{
+    uint8_t row = (mouse.y - gameScreenDest.y - tileOriginY * gameScreenScale) / (tileSize * gameScreenScale);
+    uint8_t col = (mouse.x - gameScreenDest.x - tileOriginX * gameScreenScale) / (tileSize * gameScreenScale);
+    uint8_t rowmod = ((uint32_t)(mouse.y - gameScreenDest.y - tileOriginY * gameScreenScale) % (tileSize * gameScreenScale)) / gameScreenScale;
+    uint8_t colmod = ((uint32_t)(mouse.x - gameScreenDest.x - tileOriginX * gameScreenScale) % (tileSize * gameScreenScale)) / gameScreenScale;
+    uint8_t lbound = (tileSize-tileActiveSize)/2;
+    uint8_t ubound = tileActiveSize + lbound - 1;
+    uint8_t c = board[row][col];
+    bool validloc = \
+    (
+            (row < BOARDROWS && col < BOARDCOLUMNS)
+            &&
+            (0 < c-Grass && c-Grass < FIELDTYPECOUNT)
+            &&
+            (lbound <= rowmod && rowmod <= ubound && lbound <= colmod && colmod <= ubound)
+    );
+    if (validloc) return (Coord){col, row};
+    else return (Coord){-1, -1};
+}
+
+
 Coord CoordFromText(const char *string)
 {
-    Coord c = {0, 0};
+    Coord c = {-1, -1};
     char ch = string[0];
-    if ('A' <= ch && ch <= 'S') c.y = ch - 'A';
+    if ('A' <= ch && ch <= 'S') c.x = ch - 'A';
     ch = string[1];
-    if ('1' <= ch && ch <= '9') c.x = ch - '1';
+    if ('1' <= ch && ch <= '9') c.y = ch - '1';
     return c;
 }
 
 Rectangle GameScreenRectFromBoardCoord(Coord c)
 {
-    return (Rectangle){tileOriginX + c.y * tileSize, tileOriginY + c.x * tileSize, tileSize, tileSize};
+    return (Rectangle){tileOriginX + c.x * tileSize, tileOriginY + c.y * tileSize, tileSize, tileSize};
 }
 
 void ResetLevelCommands()
@@ -201,9 +232,14 @@ void ResetLevelCommands()
     {
         switch (levelcommands[levelcommandidx].op)
         {
-            case SETWINSCENE: break;
             case CEND: break;
+            case UNWINABLE: break;
+            case WINABLE: break;
+            case UNCLICKABLE: break;
+            case CLICKABLE: break;
             case DONE: break;
+            case END: break;
+            case WIN: break;
             default: MemFree(levelcommands[levelcommandidx].attrs);
         }
         levelcommandidx--;
@@ -255,7 +291,7 @@ int TextFindNonNewlineIndex(const char *string, unsigned int startidx)
 bool load_levelcommand(const char *string, LevelCommand *levelcommand)
 {
     char opstr[16];
-    uint16_t id = END;
+    uint16_t id = LEVELCOMMANDENDID;
     uint8_t op = 0;
     int i = TextFindIndex(string, " ");
     if (i==-1) return false;
@@ -275,10 +311,16 @@ bool load_levelcommand(const char *string, LevelCommand *levelcommand)
     else if (strcmp(opstr, "MSG") == 0) op = MSG;
     else if (strcmp(opstr, "CLR") == 0) op = CLR;
     else if (strcmp(opstr, "CGOTO") == 0) op = CGOTO;
+    else if (strcmp(opstr, "PGOTO") == 0) op = PGOTO;
     else if (strcmp(opstr, "CEND") == 0) op = CEND;
+    else if (strcmp(opstr, "UNWINABLE") == 0) op = UNWINABLE;
+    else if (strcmp(opstr, "WINABLE") == 0) op = WINABLE;
+    else if (strcmp(opstr, "UNCLICKABLE") == 0) op = UNCLICKABLE;
+    else if (strcmp(opstr, "CLICKABLE") == 0) op = CLICKABLE;
     else if (strcmp(opstr, "DRAWCURSOR") == 0) op = DRAWCURSOR;
-    else if (strcmp(opstr, "PLAYING") == 0) op = SETPLAYINGSCENE;
-    else if (strcmp(opstr, "WIN") == 0) op = SETWINSCENE;
+    else if (strcmp(opstr, "PLAYINGSCENE") == 0) op = SETPLAYINGSCENE;
+    else if (strcmp(opstr, "END") == 0) op = END;
+    else if (strcmp(opstr, "WIN") == 0) op = WIN;
     else op = NOOP;
     levelcommand->id = id;
     levelcommand->op = op;
@@ -303,9 +345,9 @@ bool load(const char *fileName)
     if (i == -1) return false;
     memcpy(levelname, filedata, i);
     levelname[i] = '\0';
-    // i++;
-    // if (TextFindNewlineIndex(filedata, i) == i + 1) i++;
     i = TextFindNonNewlineIndex((char *)filedata, i);
+    winable = true;
+    clickable = true;
     picks = 0;
     eqpicks = eqpicksUnchecked;
     uint8_t row = 0;
@@ -383,14 +425,11 @@ bool load(const char *fileName)
         i = j+1;
     }
     if (0 <= levelcommandidx) levelcommandid = levelcommands[0].id;
-    else levelcommandid = END;
+    else levelcommandid = LEVELCOMMANDENDID;
     fieldtypecounttarget = (gamefields + randomfields) / FIELDTYPECOUNT;
     UnloadFileData(filedata);
     return true;
 }
-
-
-
 
 
 bool load_level(uint8_t levelval)
@@ -494,7 +533,7 @@ bool simulate(uint8_t board[BOARDROWS][BOARDCOLUMNS], uint8_t fieldtypecounts[FI
 
 void draw_cursor(Coord c, int cursornr)
 {
-    Rectangle source = (Rectangle){(tileMap[Cursor].y - 1 + cursornr) * tileSize, tileMap[Cursor].x * tileSize, tileSize, tileSize};
+    Rectangle source = (Rectangle){(tileMap[Cursor].x - 1 + cursornr) * tileSize, tileMap[Cursor].y * tileSize, tileSize, tileSize};
     Rectangle dest = GameScreenRectFromBoardCoord(c);
     DrawTexturePro(tilesTexture, source, dest, ((Vector2){0, 0}), 0, WHITE);
 }
@@ -519,10 +558,10 @@ void draw_board()
                 case Seed:
                     {
                         int8_t m = max(min(tileSurplusAvailable, (fieldtypecounts[c-Grass] - fieldtypecounttarget)), -tileDeficitAvailable);
-                        source = (Rectangle){(tileMap[c].y + m) * tileSize, tileMap[c].x * tileSize, tileSize, tileSize}; break;
+                        source = (Rectangle){(tileMap[c].x + m) * tileSize, tileMap[c].y * tileSize, tileSize, tileSize}; break;
                     } break;
                 default:
-                    source = (Rectangle){tileMap[c].y * tileSize, tileMap[c].x * tileSize, tileSize, tileSize};
+                    source = (Rectangle){tileMap[c].x * tileSize, tileMap[c].y * tileSize, tileSize, tileSize};
             }
             DrawTexturePro(tilesTexture, source, dest, ((Vector2){0, 0}), 0, WHITE);
         }
@@ -563,10 +602,18 @@ void draw_info()
 }
 
 
+void draw_debug(bool trace)
+{
+    sprintf(str, "%d", levelcommandid);
+    DrawText(str, 10, 10, 10, MAGENTA);
+    if (trace) TraceLog(LOG_DEBUG, str);
+}
+
+
 void handle_levelcommands()
 {
     if (levelcommandidx == -1) return;
-    if (levelcommandid == END) return;
+    if (levelcommandid == LEVELCOMMANDENDID) return;
     int i = 0;
     for (i = 0; i <= levelcommandidx; ++i)
     {
@@ -574,6 +621,8 @@ void handle_levelcommands()
     }
     while (i <= levelcommandidx)
     {
+        //sprintf(str, "H: %d",levelcommands[i].id);
+        //TraceLog(LOG_DEBUG, str);
         switch (levelcommands[i].op)
         {
             case DONE: return;
@@ -604,7 +653,7 @@ void handle_levelcommands()
             } break;
             case CEND:
             {
-                if (currentGesture != lastGesture && currentGesture == GESTURE_TAP) levelcommandid = END;
+                if (currentGesture != lastGesture && currentGesture == GESTURE_TAP) levelcommandid = LEVELCOMMANDENDID;
                 return;
             } break;
             case CGOTO:
@@ -614,6 +663,51 @@ void handle_levelcommands()
                     levelcommandid = atoi(levelcommands[i].attrs);
                     return;
                 }
+                i++;
+            } break;
+            case PGOTO:
+            {
+                bool mclicked = (currentGesture != lastGesture && currentGesture == GESTURE_TAP);
+                Coord mcoord = GetMouseBoardCoord();
+                Coord tcoord = CoordFromText(levelcommands[i].attrs);
+                if (
+                    (mclicked && mcoord.x == tcoord.x && mcoord.y == tcoord.y)  // pick goto from specific field
+                    ||
+                    (mclicked && tcoord.x == -1 && mcoord.x != -1 && mcoord.y != -1) // pick goto from any valid field
+                )
+                {
+                    int j = TextFindIndex(levelcommands[i].attrs, " ") + 1;
+                    levelcommandid = atoi(&levelcommands[i].attrs[j]);
+                    transform(board, fieldtypecounts, mcoord.y, mcoord.x);
+                    picks++;
+                    eqpicks = eqpicksUnchecked;
+                    return;
+                }
+                else if (mcoord.x == tcoord.x && mcoord.y == tcoord.y)
+                {
+                    draw_cursor(mcoord, 1);
+                    i++;
+                }
+                else i++;
+            } break;
+            case UNWINABLE:
+            {
+                winable = false;
+                i++;
+            } break;
+            case WINABLE:
+            {
+                winable = true;
+                i++;
+            } break;
+            case UNCLICKABLE:
+            {
+                clickable = false;
+                i++;
+            } break;
+            case CLICKABLE:
+            {
+                clickable = true;
                 i++;
             } break;
             case DRAWCURSOR:
@@ -629,10 +723,14 @@ void handle_levelcommands()
                 scene = Playing;
                 i++;
             } break;
-            case SETWINSCENE:
+            case END:
             {
-                //scene = Win;
-                levelcommandid = END;
+                levelcommandid = LEVELCOMMANDENDID;
+                return;
+            } break;
+            case WIN:
+            {
+                levelcommandid = LEVELCOMMANDENDID;
                 bool success = load_level(level+1);
                 if (!success) scene = Thanks;
                 return;
@@ -647,16 +745,16 @@ int main(void)
     SetTraceLogLevel(LOG_DEBUG);
 
     tileMap[Arable] = (Coord){0, 0};
-    tileMap[Water] = (Coord){0, 1};
-    tileMap[FarmStead] = (Coord){0, 2};
-    tileMap[Cursor] = (Coord){0, 13};
-    tileMap[Grass] = (Coord){1, 9};
-    tileMap[Grain] = (Coord){2, 9};
-    tileMap[Lettuce] = (Coord){3, 9};
-    tileMap[Berry] = (Coord){4, 9};
-    tileMap[Seed] = (Coord){5, 9};
-    tileMap[Sand] = (Coord){0, 3};
-    tileMap[Oak] = (Coord){0, 4};
+    tileMap[Water] = (Coord){1, 0};
+    tileMap[FarmStead] = (Coord){2, 0};
+    tileMap[Cursor] = (Coord){13, 0};
+    tileMap[Grass] = (Coord){9, 1};
+    tileMap[Grain] = (Coord){9, 2};
+    tileMap[Lettuce] = (Coord){9, 3};
+    tileMap[Berry] = (Coord){9, 4};
+    tileMap[Seed] = (Coord){9, 5};
+    tileMap[Sand] = (Coord){3, 0};
+    tileMap[Oak] = (Coord){4, 0};
 
     load_level(1);
 
@@ -814,24 +912,11 @@ int main(void)
 
             case Playing:
             {
-                uint8_t row = (mouse.y - gameScreenDest.y - tileOriginY * gameScreenScale) / (tileSize * gameScreenScale);
-                uint8_t col = (mouse.x - gameScreenDest.x - tileOriginX * gameScreenScale) / (tileSize * gameScreenScale);
-                uint8_t rowmod = ((uint32_t)(mouse.y - gameScreenDest.y - tileOriginY * gameScreenScale) % (tileSize * gameScreenScale)) / gameScreenScale;
-                uint8_t colmod = ((uint32_t)(mouse.x - gameScreenDest.x - tileOriginX * gameScreenScale) % (tileSize * gameScreenScale)) / gameScreenScale;
-                uint8_t lbound = (tileSize-tileActiveSize)/2;
-                uint8_t ubound = tileActiveSize + lbound - 1;
-                uint8_t c = board[row][col];
-                bool validloc = \
-                (
-                        (row < BOARDROWS && col < BOARDCOLUMNS)
-                        &&
-                        (0 < c-Grass && c-Grass < FIELDTYPECOUNT)
-                        &&
-                        (lbound <= rowmod && rowmod <= ubound && lbound <= colmod && colmod <= ubound)
-                );
-                if (validloc && (currentGesture != lastGesture && currentGesture == GESTURE_TAP))
+                bool mclicked = (currentGesture != lastGesture && currentGesture == GESTURE_TAP);
+                Coord mcoord = GetMouseBoardCoord();
+                if (clickable && mclicked && mcoord.x != -1)
                 {
-                    transform(board, fieldtypecounts, row, col);
+                    transform(board, fieldtypecounts, mcoord.y, mcoord.x);
                     picks++;
                     eqpicks = eqpicksUnchecked;
                 }
@@ -853,7 +938,7 @@ int main(void)
                 draw_board();
                 draw_info();
                 handle_levelcommands();
-                if (validloc && (currentGesture == GESTURE_NONE || currentGesture == GESTURE_DRAG)) draw_cursor((Coord){row, col}, 1);
+                if (clickable && (currentGesture == GESTURE_NONE || currentGesture == GESTURE_DRAG) && mcoord.x != -1) draw_cursor(mcoord, 1);
             } break;
 
             case Win:
@@ -863,7 +948,7 @@ int main(void)
                 handle_levelcommands();
                 if (currentGesture != lastGesture && currentGesture == GESTURE_TAP)
                 {
-                    if (levelcommandid == END)
+                    if (winable)
                     {
                         bool success = load_level(level+1);
                         if (!success) scene = Thanks;
@@ -885,6 +970,7 @@ int main(void)
             ClearBackground(BLACK);
             DrawTexturePro(screenTarget.texture, (Rectangle){0, 0, (float)screenTarget.texture.width, -(float)screenTarget.texture.height}, gameScreenDest, (Vector2){ 0, 0 }, 0.0f, WHITE);
             //DrawFPS(screenWidth-100, 10); // for debug
+            draw_debug(1);
         EndDrawing();
         //----------------------------------------------------------------------------------
 

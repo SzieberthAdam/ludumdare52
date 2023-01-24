@@ -2,19 +2,15 @@
 ==================
 I intend to release the version of Hortirata I can provide until the end of the rating phase for free.
 
-1. Level name
-1. Tutorial in the form of hints between 
+1. Fix Quicksave
+1. Better end screen
 1. Sound
 
 Short term
 ==========
 1. Ensure non-win condition when draw
-1. More levels / longer campaign
-1. Help quickscreen
 1. Title + Logo
 1. Menu
-1. Tutorial
-1. Better end screen
 
 Mid term
 ========

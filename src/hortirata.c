@@ -480,8 +480,14 @@ bool load_next(void)
 bool save(const char *fileName)
 {
     unsigned int bytesToWrite = BOARDROWS * (BOARDCOLUMNS+2);
-    char *data = MemAlloc(bytesToWrite);
-    uint8_t i = 0;
+    char *data = MemAlloc(65535);
+    strcpy(data, levelname);
+    uint8_t i = strlen(levelname);
+    data[i] = CR;
+    ++i;
+    data[i] = LF;
+    ++i;
+    bytesToWrite += i;
     for (uint8_t row=0; row<BOARDROWS; ++row)
     {
         for (uint8_t col=0; col<BOARDCOLUMNS; ++col)
@@ -498,6 +504,7 @@ bool save(const char *fileName)
         }
     }
     bool success = SaveFileData(fileName, data, bytesToWrite);
+    MemFree(data);
     return success;
 }
 

@@ -60,7 +60,7 @@ enum HortirataFieldType {
     Berry = '3',
     Seed = '4',
     FarmStead = 'F',
-    Arable = '_',
+    Arable = '?',
     Water = '~',
     Sand = ':',
     Oak = 'O',
@@ -97,6 +97,7 @@ enum LevelCommandOp {
     UNCLICKABLE = 0xCB,
     CLICKABLE = 0xCC,
     DRAWCURSOR = 0xDC,
+    NEXT = 0xE0,
     GOTO = 0xF6,
     DONE = 0xFD,
     END = 0xFE,
@@ -151,6 +152,7 @@ char levelcommandstr[256];
 char levelfilename[1024];
 char levelname[MAXLEVELNAMESIZE];
 char str[1024];
+char nextlevelfilename[256];
 char debugstr[1024];
 int levelcommandidx = -1;
 int strwidth;
@@ -162,7 +164,6 @@ uint8_t eqpicks = 0;
 uint8_t fieldtypecounts[FIELDTYPECOUNT];
 uint8_t fieldtypecounttarget = 0;
 uint8_t gamefields = 0;
-uint8_t level = 0;
 uint8_t randomfields = 0;
 uint8_t scene = NoScene;
 Coord userclickboardcoord;
@@ -329,8 +330,6 @@ bool load_levelcommand(const char *string, LevelCommand *levelcommand)
         memcpy(opstr, &string[i], j);
         opstr[j] = '\0';
     }
-    sprintf(debugstr, "j=%d opstr=%s", j, opstr);
-    TraceLog(LOG_DEBUG, debugstr);
     if (strcmp(opstr, "DONE") == 0) op = DONE;
     else if (strcmp(opstr, "MSG") == 0) op = MSG;
     else if (strcmp(opstr, "CLR") == 0) op = CLR;
@@ -345,6 +344,7 @@ bool load_levelcommand(const char *string, LevelCommand *levelcommand)
     else if (strcmp(opstr, "RESETABLE") == 0) op = RESETABLE;
     else if (strcmp(opstr, "DRAWCURSOR") == 0) op = DRAWCURSOR;
     else if (strcmp(opstr, "PLAYINGSCENE") == 0) op = SETPLAYINGSCENE;
+    else if (strcmp(opstr, "NEXT") == 0) op = NEXT;
     else if (strcmp(opstr, "GOTO") == 0) op = GOTO;
     else if (strcmp(opstr, "END") == 0) op = END;
     else if (strcmp(opstr, "WIN") == 0) op = WIN;
@@ -365,8 +365,6 @@ bool load_levelcommand(const char *string, LevelCommand *levelcommand)
 
 bool load(const char *fileName)
 {
-    sprintf(debugstr, "load(): %s", fileName);
-    TraceLog(LOG_DEBUG, debugstr);
     if (!FileExists(fileName)) return false;
     unsigned int filelength = GetFileLength(fileName);
     unsigned char* filedata = LoadFileData(fileName, &filelength);
@@ -374,6 +372,7 @@ bool load(const char *fileName)
     if (i == -1) return false;
     memcpy(levelname, filedata, i);
     levelname[i] = '\0';
+    nextlevelfilename[0] = '\0';
     i = TextFindNonNewlineIndex((char *)filedata, i);
     winable = true;
     clickable = true;
@@ -441,22 +440,15 @@ bool load(const char *fileName)
     if (0 == randomfields) scene = Playing;
     else scene = Draw;
     i = TextFindNonNewlineIndex((char *)filedata, i);
-    //TraceLog(LOG_DEBUG, "before ResetLevelCommands();");
     ResetLevelCommands();
-    //TraceLog(LOG_DEBUG, "after ResetLevelCommands();");
     while (i<filelength)
     {
         int j = TextFindNewlineIndex((char *)filedata, i);
-        sprintf(debugstr, "[1] i: %d, j: %d, filelength: %d", i, j, filelength);
-        TraceLog(LOG_DEBUG, debugstr);
         if (j==-1) j = filelength;
         j = min(j, filelength);  // TODO: must be a better way
-        sprintf(debugstr, "[2] i: %d, j: %d, filelength: %d", i, j, filelength);
-        TraceLog(LOG_DEBUG, debugstr);
         if (i < j)
         {
             memcpy(levelcommandstr, &filedata[i], j-i);
-            TraceLog(LOG_DEBUG, levelcommandstr);
             levelcommandstr[j-i] = '\0';
             levelcommandidx++;
             bool success = load_levelcommand(levelcommandstr, &levelcommands[levelcommandidx]);
@@ -464,23 +456,23 @@ bool load(const char *fileName)
         }
         i = j+1;
     }
-    //TraceLog(LOG_DEBUG, "after while");
     if (0 <= levelcommandidx) levelcommandid = levelcommands[0].id;
     else levelcommandid = LEVELCOMMANDENDID;
     fieldtypecounttarget = (gamefields + randomfields) / FIELDTYPECOUNT;
     UnloadFileData(filedata);
-    //TraceLog(LOG_DEBUG, "after UnloadFileData()");
     strcpy(levelfilename, fileName);
-    //TraceLog(LOG_DEBUG, "end of load();");
     return true;
 }
 
 
-bool load_level(uint8_t levelval)
+bool load_next(void)
 {
-    sprintf(str, "%s\\level%03d.hortirata", GetApplicationDirectory(), levelval);
-    bool success = load(str);
-    if (success) level = levelval;
+    bool success = false;
+    if (0 < strlen(nextlevelfilename))
+    {
+        sprintf(str, "%s/%s.hortirata", GetDirectoryPath(levelfilename), nextlevelfilename);
+        success = load(str);
+    }
     return success;
 }
 
@@ -615,7 +607,6 @@ void draw_board()
 
 void draw_info()
 {
-    sprintf(str, "%d", level);
     strwidth = MeasureText(levelname, 20);
     DrawText(levelname, textboxLevel.x + (textboxLevel.width - strwidth)/2, textboxLevel.y + ((textboxLevel.height - 14)/2) - 2, 20, COLOR_BACKGROUND);
     sprintf(str, "%d", picks);
@@ -662,8 +653,6 @@ void handle_levelcommands()
     for (i = 0; i <= levelcommandidx; ++i) {if (levelcommands[i].id == levelcommandid) break;};
     while (i <= levelcommandidx)
     {
-        //sprintf(debugstr, "H: %d, %d", i, levelcommands[i].id);
-        //TraceLog(LOG_DEBUG, debugstr);
         switch (levelcommands[i].op)
         {
             case DONE: return;
@@ -715,8 +704,6 @@ void handle_levelcommands()
                 {
                     if (userclicked)
                     {
-                        sprintf(debugstr, "PGOTO in: %d (%d, %d) (%d, %d)", userclicked, tcoord.x, tcoord.y, userclickboardcoord.x, userclickboardcoord.y);
-                        TraceLog(LOG_DEBUG, debugstr);
                         int j = TextFindIndex(levelcommands[i].attrs, " ") + 1;
                         levelcommandid = atoi(&levelcommands[i].attrs[j]);
                         if (!clickable)
@@ -774,6 +761,11 @@ void handle_levelcommands()
                 scene = Playing;
                 i++;
             } break;
+            case NEXT:
+            {
+                strcpy(nextlevelfilename, levelcommands[i].attrs);
+                i++;
+            } break;
             case GOTO:
             {
                 int j;
@@ -788,11 +780,11 @@ void handle_levelcommands()
             case WIN:
             {
                 levelcommandid = LEVELCOMMANDENDID;
-                bool success = load_level(level+1);
+                bool success = load_next();
                 if (!success) scene = Thanks;
-                //TraceLog(LOG_DEBUG, "end of WIN");
                 return;
             } break;
+            default: i++;
         }
     }
 }
@@ -814,11 +806,12 @@ int main(void)
     tileMap[Sand] = (Coord){3, 0};
     tileMap[Oak] = (Coord){4, 0};
 
-    load_level(1);
+    sprintf(str, "%s/levels/%s", GetApplicationDirectory(), "tutorial-1.hortirata");
+    load(str);
 
-    sprintf(str, "%s\\%s", GetApplicationDirectory(), "tiles.png");
+    sprintf(str, "%s/images/%s", GetApplicationDirectory(), "tiles.png");
     Image tiles_image = LoadImage(str);
-    sprintf(str, "%s\\%s", GetApplicationDirectory(), "bg.png");
+    sprintf(str, "%s/images/%s", GetApplicationDirectory(), "bg.png");
     Image bg_image = LoadImage(str);
 
     gameScreenWidth = bg_image.width;
@@ -896,9 +889,6 @@ int main(void)
 
         ClearBackground(BLACK);
 
-        //sprintf(debugstr, "SCENE: %d", scene);
-        //TraceLog(LOG_DEBUG, debugstr);
-
         switch (scene)
         {
             case Draw:
@@ -973,7 +963,6 @@ int main(void)
 
             case Playing:
             {
-                //TraceLog(LOG_DEBUG, "Playing");
                 userpicked = false;
                 userclicked = (currentGesture != lastGesture && currentGesture == GESTURE_TAP);
                 userclickboardcoord = GetBoardCoord(true);
@@ -985,7 +974,6 @@ int main(void)
                     userpicked = true;
                 }
                 bool equilibrium = vcount_in_equilibrium(fieldtypecounts, fieldtypecounttarget);
-                //TraceLog(LOG_DEBUG, "before eqtest");
                 if (equilibrium)
                 {
                     eqpicks = eqpicksWin;
@@ -1000,26 +988,17 @@ int main(void)
                     }
                     if (!equilibrium) eqpicks = eqpicksTooHighToCalculate;
                 }
-                //TraceLog(LOG_DEBUG, "after eqtest");
                 draw_board();
                 draw_info();
-                //TraceLog(LOG_DEBUG, "after draw");
                 handle_levelcommands();
-                //TraceLog(LOG_DEBUG, "after handlecommands");
                 if (clickable && (currentGesture == GESTURE_NONE || currentGesture == GESTURE_DRAG) && userclickboardcoord.x != -128) draw_cursor(userclickboardcoord, 1);
                 if (resetable)
                 {
                     DrawTexturePro(tilesTexture, tileResetSource, tileResetDest, ((Vector2){0, 0}), 0, WHITE);
-                    //sprintf(debugstr, "resetable %d, %d",userclicked,userclickboardcoord.x);
-                    //TraceLog(LOG_DEBUG, debugstr);
                     if (userclicked && userclickboardcoord.x == -128)
                     {
-                        TraceLog(LOG_DEBUG, "in reset");
                         Vector2 mscreencoord = GetMouseGameScreenCoord();
                         bool reset = CheckCollisionPointRec(mscreencoord, tileResetDest);
-                        sprintf(debugstr, "reset: %d %d",reset, strlen(levelfilename));
-                        TraceLog(LOG_DEBUG, debugstr);
-                        TraceLog(LOG_DEBUG, levelfilename);
                         if (reset)
                         {
                             uint32_t savedpicks = picks;
@@ -1032,7 +1011,6 @@ int main(void)
 
             case Win:
             {
-                //TraceLog(LOG_DEBUG, "Win");
                 draw_board();
                 draw_info();
                 handle_levelcommands();
@@ -1040,11 +1018,10 @@ int main(void)
                 {
                     if (winable)
                     {
-                        bool success = load_level(level+1);
+                        bool success = load_next();
                         if (!success) scene = Thanks;
                     }
                 }
-                //TraceLog(LOG_DEBUG, "end of Win");
             } break;
 
             case Thanks:
@@ -1069,24 +1046,19 @@ int main(void)
         if (IsFileDropped())
         {
             FilePathList droppedfiles = LoadDroppedFiles();
-            if (droppedfiles.count == 1)
-            {
-                bool success = load(droppedfiles.paths[0]);
-                if (success) level = 0;
-            }
+            if (droppedfiles.count == 1) load(droppedfiles.paths[0]);
             UnloadDroppedFiles(droppedfiles);
         }
         // Quickload
         if (IsKeyPressed(KEY_L))
         {
-            sprintf(str, "%s\\%s", GetApplicationDirectory(), "puzzle.hortirata");
-            bool success = load(str);
-            if (success) level = 0;
+            sprintf(str, "%s/%s", GetApplicationDirectory(), "puzzle.hortirata");
+            load(str);
         }
         // Quicksave
         if (IsKeyPressed(KEY_S))
         {
-            sprintf(str, "%s\\%s", GetApplicationDirectory(), "puzzle.hortirata");
+            sprintf(str, "%s/%s", GetApplicationDirectory(), "puzzle.hortirata");
             save(str);
         }
 

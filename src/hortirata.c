@@ -223,10 +223,14 @@ Coord GetBoardCoord(bool restricttoboard)
     int8_t lbound = (tileSize-tileActiveSize)/2;
     int8_t ubound = tileActiveSize + lbound - 1;
     bool validloc = true;
-    if (restricttoboard && 0 <= row && row < BOARDROWS && 0 <= col && col < BOARDCOLUMNS)
+    if (restricttoboard)
     {
-        uint8_t c = board[row][col];
-        if (!(0 < c-Grass && c-Grass < FIELDTYPECOUNT)) validloc = false;
+        if (0 <= row && row < BOARDROWS && 0 <= col && col < BOARDCOLUMNS)
+        {
+            uint8_t c = board[row][col];
+            if (!(0 < c-Grass && c-Grass < FIELDTYPECOUNT)) validloc = false;
+        }
+        else validloc = false;
     }
     validloc = (validloc && (lbound <= rowmod && rowmod <= ubound && lbound <= colmod && colmod <= ubound));
     if (validloc) return (Coord){col, row};

@@ -2,8 +2,6 @@
 ==================
 I intend to release the version of Hortirata I can provide until the end of the rating phase for free.
 
-1. Fix Quicksave
-1. Better end screen
 1. Sound
 
 Short term
@@ -11,6 +9,7 @@ Short term
 1. Ensure non-win condition when draw
 1. Title + Logo
 1. Menu
+1. Draw animation
 
 Mid term
 ========

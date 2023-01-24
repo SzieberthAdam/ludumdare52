@@ -97,7 +97,8 @@ enum LevelCommandOp {
     UNCLICKABLE = 0xCB,
     CLICKABLE = 0xCC,
     DRAWCURSOR = 0xDC,
-    NEXT = 0xE0,
+    PREV = 0xE0,
+    NEXT = 0xE1,
     GOTO = 0xF6,
     DONE = 0xFD,
     END = 0xFE,
@@ -143,17 +144,20 @@ unsigned ffs(int n)
 === GLOBAL VARIABLES ===========================================================================================
 */
 
-bool userpicked = false;
 bool clickable = true;
 bool resetable = false;
+bool userclicked;
 bool winable = true;
+char debugstr[1024];
 char levelcommandparamarea[LEVELCOMAMNDPARAMAREASIZE];
 char levelcommandstr[256];
-char levelfilename[1024];
+char levelfilename[256];
+char levelfilepath[1024];
 char levelname[MAXLEVELNAMESIZE];
-char str[1024];
 char nextlevelfilename[256];
-char debugstr[1024];
+char prevlevelfilename[256];
+char str[1024];
+Coord userclickboardcoord;
 int levelcommandidx = -1;
 int strwidth;
 LevelCommand levelcommands[MAXLEVELCOMAMNDCOUNT];
@@ -166,8 +170,6 @@ uint8_t fieldtypecounttarget = 0;
 uint8_t gamefields = 0;
 uint8_t randomfields = 0;
 uint8_t scene = NoScene;
-Coord userclickboardcoord;
-bool userclicked;
 
 Coord tileMap[255];
 int currentGesture = GESTURE_NONE;
@@ -220,11 +222,11 @@ Coord GetBoardCoord(bool restricttoboard)
     int8_t colmod = ((int32_t)(mouse.x - gameScreenDest.x - tileOriginX * gameScreenScale) % (tileSize * gameScreenScale)) / gameScreenScale;
     int8_t lbound = (tileSize-tileActiveSize)/2;
     int8_t ubound = tileActiveSize + lbound - 1;
-    bool validloc = false;
-    if (0 <= row && row < BOARDROWS && 0 <= col && col < BOARDCOLUMNS)
+    bool validloc = true;
+    if (restricttoboard && 0 <= row && row < BOARDROWS && 0 <= col && col < BOARDCOLUMNS)
     {
         uint8_t c = board[row][col];
-        if (0 < c-Grass && c-Grass < FIELDTYPECOUNT) validloc = true;
+        if (!(0 < c-Grass && c-Grass < FIELDTYPECOUNT)) validloc = false;
     }
     validloc = (validloc && (lbound <= rowmod && rowmod <= ubound && lbound <= colmod && colmod <= ubound));
     if (validloc) return (Coord){col, row};
@@ -344,6 +346,7 @@ bool load_levelcommand(const char *string, LevelCommand *levelcommand)
     else if (strcmp(opstr, "RESETABLE") == 0) op = RESETABLE;
     else if (strcmp(opstr, "DRAWCURSOR") == 0) op = DRAWCURSOR;
     else if (strcmp(opstr, "PLAYINGSCENE") == 0) op = SETPLAYINGSCENE;
+    else if (strcmp(opstr, "PREV") == 0) op = PREV;
     else if (strcmp(opstr, "NEXT") == 0) op = NEXT;
     else if (strcmp(opstr, "GOTO") == 0) op = GOTO;
     else if (strcmp(opstr, "END") == 0) op = END;
@@ -372,12 +375,10 @@ bool load(const char *fileName)
     if (i == -1) return false;
     memcpy(levelname, filedata, i);
     levelname[i] = '\0';
-    nextlevelfilename[0] = '\0';
     i = TextFindNonNewlineIndex((char *)filedata, i);
     winable = true;
     clickable = true;
     resetable = false;
-    userpicked = false;
     picks = 0;
     eqpicks = eqpicksUnchecked;
     uint8_t row = 0;
@@ -460,17 +461,23 @@ bool load(const char *fileName)
     else levelcommandid = LEVELCOMMANDENDID;
     fieldtypecounttarget = (gamefields + randomfields) / FIELDTYPECOUNT;
     UnloadFileData(filedata);
-    strcpy(levelfilename, fileName);
+    nextlevelfilename[0] = '\0';
+    strcpy(prevlevelfilename, levelfilename);
+    strcpy(levelfilepath, fileName);
+    strcpy(levelfilename, GetFileName(levelfilepath));
+    int j = TextFindIndex(levelfilename, ".");
+    if (0 <= j) levelfilename[j] = '\0';
     return true;
 }
 
 
-bool load_next(void)
+bool load_next(bool next)
 {
     bool success = false;
-    if (0 < strlen(nextlevelfilename))
+    char *filename = (next) ? nextlevelfilename : prevlevelfilename;
+    if (0 < strlen(filename))
     {
-        sprintf(str, "%s/%s.hortirata", GetDirectoryPath(levelfilename), nextlevelfilename);
+        sprintf(str, "%s/%s.hortirata", GetDirectoryPath(levelfilepath), filename);
         success = load(str);
     }
     return success;
@@ -644,6 +651,19 @@ void draw_info()
 }
 
 
+void draw_msg(char *topleft, char *bottomright, char *string, Color color)
+{
+    Coord topleftcoord = CoordFromText(topleft);
+    Coord bottomrightcoord = CoordFromText(bottomright);
+    Rectangle r0 = GameScreenRectFromBoardCoord(topleftcoord);
+    Rectangle r1 = GameScreenRectFromBoardCoord(bottomrightcoord);
+    Rectangle r = (Rectangle){r0.x, r0.y, r1.x-r0.x+r1.width, r1.y-r0.y+r1.height};
+    DrawRectangleRec(r, BLACK);
+    strwidth = MeasureText(string, 20);
+    DrawText(string, r.x + (r.width - strwidth)/2, r.y + ((r.height - 14)/2) - 2, 20, color);
+}
+
+
 void draw_debug(bool trace)
 {
     sprintf(debugstr, "%d", levelcommandid);
@@ -676,16 +696,12 @@ void handle_levelcommands()
             } break;
             case MSG:
             {
-                Coord c0 = CoordFromText(levelcommands[i].attrs);
+                char *topleft = levelcommands[i].attrs;
                 int j = TextFindIndex(levelcommands[i].attrs, " ") + 1;
-                Coord c1 = CoordFromText(&levelcommands[i].attrs[j]);
-                Rectangle r0 = GameScreenRectFromBoardCoord(c0);
-                Rectangle r1 = GameScreenRectFromBoardCoord(c1);
-                Rectangle r = (Rectangle){r0.x, r0.y, r1.x-r0.x+r1.width, r1.y-r0.y+r1.height};
-                DrawRectangleRec(r, BLACK);
+                char *bottomright = &levelcommands[i].attrs[j];
                 j += TextFindIndex(&levelcommands[i].attrs[j], " ") + 1;
-                strwidth = MeasureText(&levelcommands[i].attrs[j], 20);
-                DrawText(&levelcommands[i].attrs[j], r.x + (r.width - strwidth)/2, r.y + ((r.height - 14)/2) - 2, 20, WHITE);
+                char *string = &levelcommands[i].attrs[j];
+                draw_msg(topleft, bottomright, string, WHITE);
                 i++;
             } break;
             case CEND:
@@ -768,6 +784,11 @@ void handle_levelcommands()
                 scene = Playing;
                 i++;
             } break;
+            case PREV:
+            {
+                strcpy(prevlevelfilename, levelcommands[i].attrs);
+                i++;
+            } break;
             case NEXT:
             {
                 strcpy(nextlevelfilename, levelcommands[i].attrs);
@@ -787,7 +808,7 @@ void handle_levelcommands()
             case WIN:
             {
                 levelcommandid = LEVELCOMMANDENDID;
-                bool success = load_next();
+                bool success = load_next(true);
                 if (!success) scene = Thanks;
                 return;
             } break;
@@ -891,6 +912,7 @@ int main(void)
         mouse = GetTouchPosition(0);
         lastGesture = currentGesture;
         currentGesture = GetGestureDetected();
+        userclicked = (currentGesture != lastGesture && currentGesture == GESTURE_TAP);
 
         BeginTextureMode(screenTarget);
 
@@ -966,19 +988,17 @@ int main(void)
                 }
                 draw_board();
                 draw_info();
+                handle_levelcommands();
             } break;
 
             case Playing:
             {
-                userpicked = false;
-                userclicked = (currentGesture != lastGesture && currentGesture == GESTURE_TAP);
                 userclickboardcoord = GetBoardCoord(true);
                 if (clickable && userclicked && userclickboardcoord.x != -128)
                 {
                     transform(board, fieldtypecounts, userclickboardcoord.y, userclickboardcoord.x);
                     picks++;
                     eqpicks = eqpicksUnchecked;
-                    userpicked = true;
                 }
                 bool equilibrium = vcount_in_equilibrium(fieldtypecounts, fieldtypecounttarget);
                 if (equilibrium)
@@ -1009,7 +1029,7 @@ int main(void)
                         if (reset)
                         {
                             uint32_t savedpicks = picks;
-                            load(levelfilename);
+                            load(levelfilepath);
                             picks = savedpicks;
                         }
                     }
@@ -1025,7 +1045,7 @@ int main(void)
                 {
                     if (winable)
                     {
-                        bool success = load_next();
+                        bool success = load_next(true);
                         if (!success) scene = Thanks;
                     }
                 }
@@ -1033,9 +1053,23 @@ int main(void)
 
             case Thanks:
             {
-                sprintf(str, "THANKS FOR PLAYING!");
-                strwidth = MeasureText(str, 20);
-                DrawText(str, (gameScreenWidth - strwidth) / 2, 100, 20, COLOR_FOREGROUND);
+                draw_msg("A1", "S1", "THANKS FOR PLAYING!", COLOR_TITLE);
+                draw_msg("A2", "S2", "YOU HAVE MASTERED HORTIRATA.", WHITE);
+                draw_msg("A4", "S4", "YOU CAN USE THE [N]/[P] KEY TO LOAD THE NEXT/PREVIOUS LEVEL.", WHITE);
+                draw_msg("A5", "S5", "ALSO YOU CAN DRAG & DROP ANY PUZZLE FILE INTO THE GAME WINDOW TO LOAD IT.", WHITE);
+                draw_msg("A6", "S6", "CUSTOM LEVELS CAN BE MADE WITH A SIMPLE PLAIN TEXT EDITOR.", WHITE);
+                draw_cursor((Coord){9, 8}, 4);
+                if (userclicked)
+                {
+                    userclickboardcoord = GetBoardCoord(false);
+                    sprintf(str, "(%d, %d)", userclickboardcoord.x, userclickboardcoord.y);
+                    TraceLog(LOG_DEBUG, str);
+                    if (userclickboardcoord.x == 9 && userclickboardcoord.y == 8)
+                    {
+                        sprintf(str, "%s/levels/%s", GetApplicationDirectory(), "tutorial-1.hortirata");
+                        load(str);
+                    }
+                }
             }
         }
 
@@ -1048,6 +1082,10 @@ int main(void)
             //draw_debug(1);
         EndDrawing();
         //----------------------------------------------------------------------------------
+
+        // Load next/prev level
+        if (IsKeyPressed(KEY_N)) load_next(true);
+        if (IsKeyPressed(KEY_P)) load_next(false);
 
         // Load by drop
         if (IsFileDropped())

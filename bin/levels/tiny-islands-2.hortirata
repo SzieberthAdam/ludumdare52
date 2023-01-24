@@ -8,5 +8,6 @@ Tiny Islands II.
 ~~~~2~~~~~10~~~~~~~
 ~~~~~~~~~~~4~~~~~~~
 ~~~~~~~~~~~~~~~~~~~
-1 NEXT ludum-island-1
-2 RESETABLE
+1 PREV tetris-islands-1
+2 NEXT ludum-island-1
+3 RESETABLE

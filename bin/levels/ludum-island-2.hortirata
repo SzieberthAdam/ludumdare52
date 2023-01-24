@@ -8,5 +8,6 @@ Ludum Island II.
 ~~~~~~~~~~~~~~~~~~~
 ~~~~~~~~~~~~~~~~~~~
 ~~~~~~~~~~~~~~~~~~~
-1 NEXT tiny-oasis-1
-2 RESETABLE
+1 PREV ludum-island-1
+2 NEXT tiny-oasis-1
+3 RESETABLE

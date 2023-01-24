@@ -8,5 +8,6 @@ Tetris Islands I.
 ~~~~21~~~~~~~~~~~~~
 ~~~~~~~~~1323~~~~~~
 ~~~~~~~~~~~~~~~~~~~
-1 NEXT tiny-islands-2
-2 RESETABLE
+1 PREV tiny-islands-1
+2 NEXT tiny-islands-2
+3 RESETABLE

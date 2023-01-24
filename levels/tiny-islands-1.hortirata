@@ -8,5 +8,6 @@ Tiny Islands I.
 ~~~~2~~~~~10~~~~~~~
 ~~~~~~~~~~~~~~~~~~~
 ~~~~~~~~~~~~~~~~~~~
-1 NEXT tetris-islands-1
-2 RESETABLE
+1 PREV tutorial-3
+2 NEXT tetris-islands-1
+3 RESETABLE

@@ -8,9 +8,10 @@ Tutorial 3.
 ~4~~~~~~~~~~~~~~~~~
 ~~~~~~~~~~~~~~~~~~~
 ~~~~~~~~~~~~~~~~~~~
-1 NEXT tiny-islands-1
-2 UNWINABLE
-3 UNCLICKABLE
+1 PREV tutorial-2
+2 NEXT tiny-islands-1
+3 UNWINABLE
+4 UNCLICKABLE
 10 CLR H1 S9
 10 MSG H2 S2 YOUR GOAL IS TO ACHIEVE EQUILIBRIUM
 11 MSG H3 S3 BY BALANCING THE COUNT OF FIELD TYPES.

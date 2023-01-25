@@ -12,3 +12,4 @@ Download
 --------
 
 * [Compo version (Windows)](../../releases/download/compo/hortirata-ld52compo.zip)
+* [Post Compo draft version (Windows)](../../releases/download/postcompo/hortirata-ld52postcompo.zip)

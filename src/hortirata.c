@@ -74,11 +74,11 @@ enum HortirataScene {
     Thanks = 22,
 };
 
-enum eqpicksSpecialValue {
-    eqpicksWin = 0,
-    eqpicksMaxCalculate = 3, // IMPORTANT
-    eqpicksTooHighToCalculate = 254,
-    eqpicksUnchecked = 255,
+enum eqharvestsSpecialValue {
+    eqharvestsWin = 0,
+    eqharvestsMaxCalculate = 3, // IMPORTANT
+    eqharvestsTooHighToCalculate = 254,
+    eqharvestsUnchecked = 255,
 };
 
 enum LevelCommandOp {
@@ -162,9 +162,9 @@ int levelcommandidx = -1;
 int strwidth;
 LevelCommand levelcommands[MAXLEVELCOMAMNDCOUNT];
 uint16_t levelcommandid = LEVELCOMMANDENDID;
-uint32_t picks = 0;
+uint32_t harvests = 0;
 uint8_t board[BOARDROWS][BOARDCOLUMNS];
-uint8_t eqpicks = 0;
+uint8_t eqharvests = 0;
 uint8_t fieldtypecounts[FIELDTYPECOUNT];
 uint8_t fieldtypecounttarget = 0;
 uint8_t gamefields = 0;
@@ -178,7 +178,7 @@ int fps = 30;
 int lastGesture = GESTURE_NONE;
 Rectangle gameScreenDest;
 Rectangle textboxLevel = {112, 688, 216, 24};
-Rectangle textboxPicks = {1144, 688, 104, 24};
+Rectangle textboxHarvests = {1144, 688, 104, 24};
 Rectangle tileResetDest = {941, 681, 38, 38};
 Rectangle tileResetSource = {1037, 13, 38, 38};
 Rectangle tileWinDest = {624, 684, 32, 32};
@@ -383,8 +383,8 @@ bool load(const char *fileName)
     winable = true;
     clickable = true;
     resetable = false;
-    picks = 0;
-    eqpicks = eqpicksUnchecked;
+    harvests = 0;
+    eqharvests = eqharvestsUnchecked;
     uint8_t row = 0;
     uint8_t col = 0;
     for (uint8_t v=0; v<FIELDTYPECOUNT; v++) fieldtypecounts[v] = 0;
@@ -555,11 +555,11 @@ bool vcount_in_equilibrium(uint8_t fieldtypecounts[FIELDTYPECOUNT], uint8_t fiel
 }
 
 
-bool simulate(uint8_t board[BOARDROWS][BOARDCOLUMNS], uint8_t fieldtypecounts[FIELDTYPECOUNT], uint8_t fieldtypecounttarget, uint8_t picks)
+bool simulate(uint8_t board[BOARDROWS][BOARDCOLUMNS], uint8_t fieldtypecounts[FIELDTYPECOUNT], uint8_t fieldtypecounttarget, uint8_t harvests)
 {
     uint8_t simboard[BOARDROWS][BOARDCOLUMNS];
     uint8_t simfieldtypecounts[FIELDTYPECOUNT];
-    if (picks == 0) return false;
+    if (harvests == 0) return false;
     for (uint8_t row=0; row<BOARDROWS; row++)
     {
         for (uint8_t col=0; col<BOARDCOLUMNS; col++)
@@ -576,7 +576,7 @@ bool simulate(uint8_t board[BOARDROWS][BOARDCOLUMNS], uint8_t fieldtypecounts[FI
                     memcpy(&simfieldtypecounts, fieldtypecounts, FIELDTYPECOUNT);
                     transform(simboard, simfieldtypecounts, row, col);
                     if (vcount_in_equilibrium(simfieldtypecounts, fieldtypecounttarget)) return true;
-                    if ((1 < picks) && simulate(simboard, simfieldtypecounts, fieldtypecounttarget, picks-1)) return true;
+                    if ((1 < harvests) && simulate(simboard, simfieldtypecounts, fieldtypecounttarget, harvests-1)) return true;
                 } break;
             }
         }
@@ -627,12 +627,12 @@ void draw_info()
 {
     strwidth = MeasureText(levelname, 20);
     DrawText(levelname, textboxLevel.x + (textboxLevel.width - strwidth)/2, textboxLevel.y + ((textboxLevel.height - 14)/2) - 2, 20, COLOR_BACKGROUND);
-    sprintf(str, "%d", picks);
+    sprintf(str, "%d", harvests);
     strwidth = MeasureText(str, 20);
-    DrawText(str, textboxPicks.x + (textboxPicks.width - strwidth)/2, textboxPicks.y + ((textboxPicks.height - 14)/2) - 2, 20, COLOR_BACKGROUND);
-    switch (eqpicks)
+    DrawText(str, textboxHarvests.x + (textboxHarvests.width - strwidth)/2, textboxHarvests.y + ((textboxHarvests.height - 14)/2) - 2, 20, COLOR_BACKGROUND);
+    switch (eqharvests)
     {
-        case eqpicksWin:
+        case eqharvestsWin:
         {
             DrawTexturePro(tilesTexture, tileWinSource, tileWinDest, ((Vector2){0, 0}), 0, WHITE);
         }; // fallthrough!
@@ -736,8 +736,8 @@ void handle_levelcommands()
                         if (!clickable)
                         {
                             transform(board, fieldtypecounts, userclickboardcoord.y, userclickboardcoord.x);
-                            picks++;
-                            eqpicks = eqpicksUnchecked;
+                            harvests++;
+                            eqharvests = eqharvestsUnchecked;
                         }
                         return;
                     }
@@ -1001,23 +1001,23 @@ int main(void)
                 if (clickable && userclicked && userclickboardcoord.x != -128)
                 {
                     transform(board, fieldtypecounts, userclickboardcoord.y, userclickboardcoord.x);
-                    picks++;
-                    eqpicks = eqpicksUnchecked;
+                    harvests++;
+                    eqharvests = eqharvestsUnchecked;
                 }
                 bool equilibrium = vcount_in_equilibrium(fieldtypecounts, fieldtypecounttarget);
                 if (equilibrium)
                 {
-                    eqpicks = eqpicksWin;
+                    eqharvests = eqharvestsWin;
                     scene = Win;
                 }
-                else if (!equilibrium && (eqpicks == eqpicksUnchecked))
+                else if (!equilibrium && (eqharvests == eqharvestsUnchecked))
                 {
-                    for (eqpicks=1; eqpicks <= eqpicksMaxCalculate; eqpicks++)
+                    for (eqharvests=1; eqharvests <= eqharvestsMaxCalculate; eqharvests++)
                     {
-                        equilibrium = simulate(board, fieldtypecounts, fieldtypecounttarget, eqpicks);
+                        equilibrium = simulate(board, fieldtypecounts, fieldtypecounttarget, eqharvests);
                         if (equilibrium) break;
                     }
-                    if (!equilibrium) eqpicks = eqpicksTooHighToCalculate;
+                    if (!equilibrium) eqharvests = eqharvestsTooHighToCalculate;
                 }
                 draw_board();
                 draw_info();
@@ -1032,9 +1032,9 @@ int main(void)
                         bool reset = CheckCollisionPointRec(mscreencoord, tileResetDest);
                         if (reset)
                         {
-                            uint32_t savedpicks = picks;
+                            uint32_t savedharvests = harvests;
                             load(levelfilepath);
-                            picks = savedpicks;
+                            harvests = savedharvests;
                         }
                     }
                 }
@@ -1059,7 +1059,7 @@ int main(void)
             {
                 draw_msg("A1", "S1", "THANKS FOR PLAYING!", COLOR_TITLE);
                 draw_msg("A2", "S2", "YOU HAVE MASTERED HORTIRATA.", WHITE);
-                draw_msg("A4", "S4", "YOU CAN USE THE [N]/[P] KEY TO LOAD THE NEXT/PREVIOUS LEVEL.", WHITE);
+                draw_msg("A4", "S4", "YOU CAN USE THE [N]/[P] KEYS TO LOAD THE NEXT/PREVIOUS LEVEL.", WHITE);
                 draw_msg("A5", "S5", "ALSO YOU CAN DRAG & DROP ANY PUZZLE FILE INTO THE GAME WINDOW TO LOAD IT.", WHITE);
                 draw_msg("A6", "S6", "CUSTOM LEVELS CAN BE MADE WITH A SIMPLE PLAIN TEXT EDITOR.", WHITE);
                 draw_cursor((Coord){9, 8}, 4);
@@ -1090,6 +1090,7 @@ int main(void)
         // Load next/prev level
         if (IsKeyPressed(KEY_N)) load_next(true);
         if (IsKeyPressed(KEY_P)) load_next(false);
+        // if (IsKeyPressed(KEY_T)) scene = Thanks;
 
         // Load by drop
         if (IsFileDropped())

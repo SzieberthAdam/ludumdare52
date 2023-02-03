@@ -8,8 +8,10 @@ The goal is to equalize the amount of different tiles on the map.
 
 ![Compo version](/screenshots/02.png)
 
+![Post Compo version](/screenshots/postcompo-01.png)
+
 Download
 --------
 
 * [Compo version (Windows)](../../releases/download/compo/hortirata-ld52compo.zip)
-* [Post Compo draft version (Windows)](../../releases/download/postcompo/hortirata-ld52postcompo.zip)
+* [Post Compo version (Windows)](../../releases/download/postcompo/hortirata-ld52postcompo.zip)
